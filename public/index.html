@@ -27,15 +27,30 @@
       <div class="header-actions">
         <div class="main-mode-switch" id="mainModeSwitch">
           <button class="mode-btn active" id="btnModeStudio" data-mode="studio">
-            <span>✨ Tạo Video Mới</span>
+            <span>✨ Tạo Video</span>
+          </button>
+          <button class="mode-btn" id="btnModeFeeds" data-mode="feeds">
+            <span>📰 RSS Tin Tức</span>
           </button>
           <button class="mode-btn" id="btnModeTimeline" data-mode="timeline">
             <span>⏱️ Timeline Editor</span>
           </button>
+          <button class="mode-btn" id="btnModeLexicon" data-mode="lexicon">
+            <span>📖 Từ Điển Phát Âm</span>
+          </button>
+          <button class="mode-btn" id="btnModeLibrary" data-mode="library">
+            <span>📂 Thư Viện Video</span>
+          </button>
         </div>
+        <button class="btn btn-sm btn-outline" id="btnToggleSafeZone" title="Bật/Tắt Lưới Safe Zone TikTok (M5)">
+          <span>🎯 Safe Zone</span>
+        </button>
+        <button class="btn btn-sm btn-outline" id="btnToggleTheme" title="Chuyển Theme Dark-Neon / Light-Pro (M3)">
+          <span id="themeIcon">🌙</span> <span id="themeLabel">Dark Neon</span>
+        </button>
         <div class="status-pill free-badge" id="ttsStatusBadge" title="Đang sử dụng Microsoft Edge TTS miễn phí, không tốn tiền API">
           <span class="status-dot green"></span>
-          <span class="status-text">Edge TTS (0đ Miễn phí)</span>
+          <span class="status-text">Edge TTS (0đ)</span>
         </div>
       </div>
     </div>
@@ -110,6 +125,46 @@
               <div class="form-group col-6">
                 <label for="inputChannelUrl">Tên kênh hiển thị</label>
                 <input type="text" id="inputChannelUrl" value="Công Nghệ 24h">
+              </div>
+            </div>
+
+            <!-- Advanced Video Config (M1-M5) -->
+            <div class="advanced-studio-box">
+              <div class="advanced-title">⚙️ Cấu Hình Nâng Cao (M1–M5)</div>
+              <div class="form-row">
+                <div class="form-group col-4">
+                  <label for="selectPresetUrl">Độ dài Preset</label>
+                  <select id="selectPresetUrl">
+                    <option value="news_45" selected>news_45 (~45s Bản tin)</option>
+                    <option value="short_30">short_30 (~30s Ngắn gọn)</option>
+                    <option value="review_60">review_60 (~60s Đánh giá)</option>
+                  </select>
+                </div>
+                <div class="form-group col-4">
+                  <label for="selectCaptionStyleUrl">Kiểu Phụ Đề (M1)</label>
+                  <select id="selectCaptionStyleUrl">
+                    <option value="tiktok-bold" selected>tiktok-bold (Chữ lớn nổi bật)</option>
+                    <option value="classic-sub">classic-sub (Cổ điển)</option>
+                    <option value="minimal">minimal (Tối giản)</option>
+                  </select>
+                </div>
+                <div class="form-group col-4">
+                  <label>Nhạc Nền & Ducking (M5)</label>
+                  <div class="checkbox-row" style="margin-top: 8px;">
+                    <label class="custom-checkbox">
+                      <input type="checkbox" id="checkEnableBgmUrl" checked>
+                      <span>Bật BGM Ducking</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div class="form-row" style="margin-top: 8px;">
+                <div class="form-group col-12">
+                  <label class="custom-checkbox">
+                    <input type="checkbox" id="checkUseOgImageUrl">
+                    <span>Sử dụng ảnh bài báo gốc (og:image) làm ảnh nền cảnh mở đầu (M2)</span>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -216,6 +271,99 @@
       </section>
     </div>
 
+    <!-- RSS Feeds Section (Milestone M7) -->
+    <section class="feeds-section glass-card" id="feedsSection" style="display: none;">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h3 class="section-title">📰 Quét Tin Tức RSS Tự Động (M7)</h3>
+          <span class="badge" id="feedsCountBadge">0 Bài Viết</span>
+        </div>
+        <div class="header-actions-group">
+          <button class="btn btn-sm btn-secondary" id="btnRefreshFeeds">
+            <span class="icon">🔄</span>
+            <span>Quét Lại Tin Mới</span>
+          </button>
+          <button class="btn btn-sm btn-primary btn-glow" id="btnRunBatchQueue">
+            <span class="icon">🚀</span>
+            <span>Chạy Batch Queue (3 Bài)</span>
+          </button>
+        </div>
+      </div>
+
+      <p class="section-subtitle">Tự động lấy tin bài mới nhất từ VnExpress Số Hóa, Tuổi Trẻ, GenK, Thanh Niên. Bấm tạo video cho bất kỳ bài nào chỉ với 1 click:</p>
+
+      <div class="feeds-table-wrapper">
+        <table class="feeds-table" id="feedsTable">
+          <thead>
+            <tr>
+              <th style="width: 50px;">STT</th>
+              <th style="width: 140px;">Nguồn Tin</th>
+              <th>Tiêu Đề Bài Báo</th>
+              <th style="width: 150px;">Thời Gian</th>
+              <th style="width: 160px; text-align: right;">Hành Động</th>
+            </tr>
+          </thead>
+          <tbody id="feedsTableBody">
+            <tr>
+              <td colspan="5" style="text-align: center; color: #94a3b8; padding: 2rem;">
+                <span class="modal-spinner" style="width: 18px; height: 18px; display: inline-block;"></span> Đang quét dữ liệu từ các nguồn RSS...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Lexicon Pronunciation Dictionary Section (Milestone M5) -->
+    <section class="lexicon-section glass-card" id="lexiconSection" style="display: none;">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h3 class="section-title">📖 Từ Điển Phát Âm Cho Giọng AI (Lexicon M5)</h3>
+          <span class="badge" id="lexiconCountBadge">0 Từ</span>
+        </div>
+        <button class="btn btn-sm btn-primary btn-glow" id="btnSaveLexicon">
+          <span>💾</span>
+          <span>Lưu Từ Điển</span>
+        </button>
+      </div>
+
+      <p class="section-subtitle">Tự động sửa lỗi phát âm từ tiếng Anh, viết tắt, và tên riêng (ví dụ "OpenAI" ➔ "âu pần ây ai", "iPhone" ➔ "ai phôn"). Hệ thống xử lý single-pass regex không làm lỗi chữ hiển thị trên màn hình.</p>
+
+      <div class="lexicon-add-box">
+        <div class="form-row">
+          <div class="form-group col-5">
+            <label for="inputLexiconTerm">Từ gốc / Ký hiệu tiếng Anh</label>
+            <input type="text" id="inputLexiconTerm" placeholder="Ví dụ: ChatGPT, Gemini, NVIDIA...">
+          </div>
+          <div class="form-group col-5">
+            <label for="inputLexiconPhonetic">Cách đọc phiên âm tiếng Việt (cho TTS)</label>
+            <input type="text" id="inputLexiconPhonetic" placeholder="Ví dụ: chát giê pi ti, gie mi ni, en vi đi a...">
+          </div>
+          <div class="form-group col-2" style="display: flex; align-items: flex-end;">
+            <button type="button" class="btn btn-secondary btn-block" id="btnAddLexiconWord">
+              <span>+ Thêm</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="lexicon-table-wrapper">
+        <table class="feeds-table" id="lexiconTable">
+          <thead>
+            <tr>
+              <th style="width: 60px;">STT</th>
+              <th style="width: 35%;">Từ Gốc</th>
+              <th>Phiên Âm Đọc Cho AI</th>
+              <th style="width: 100px; text-align: center;">Thao Tác</th>
+            </tr>
+          </thead>
+          <tbody id="lexiconTableBody">
+            <!-- Words injected by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- Timeline Editor Section (Milestone M6) -->
     <section class="timeline-editor-section glass-card" id="timelineEditorSection" style="display: none;">
       <!-- Timeline Top Bar -->
@@ -250,6 +398,9 @@
         </div>
 
         <div class="topbar-right">
+          <button class="btn btn-sm btn-outline" id="btnImportSrtModal" title="Nhập file phụ đề SRT bên ngoài (M1)">
+            <span>📥</span> Nhập SRT
+          </button>
           <button class="btn btn-sm btn-secondary" id="btnSaveProjectScript">
             <span>💾</span> Lưu Kịch Bản
           </button>
@@ -319,6 +470,45 @@
               <div class="form-group col-6">
                 <label for="inspectorDuration">Thời lượng cảnh (giây)</label>
                 <input type="number" id="inspectorDuration" min="0.5" max="30" step="0.1" value="3.0">
+              </div>
+            </div>
+
+            <!-- Transition (M5) & Media Asset (M2) Controls -->
+            <div class="inspector-subcard">
+              <div class="subcard-title">🎬 Chuyển Cảnh & Media Asset (M2, M5)</div>
+              <div class="form-row">
+                <div class="form-group col-6">
+                  <label for="inspectorTransition">Chuyển cảnh (M5)</label>
+                  <select id="inspectorTransition">
+                    <option value="cut">cut (Cắt liền)</option>
+                    <option value="fade">fade (Mờ dần)</option>
+                    <option value="slide">slide (Trượt ngang)</option>
+                    <option value="zoom">zoom (Thu phóng)</option>
+                  </select>
+                </div>
+                <div class="form-group col-6">
+                  <label for="inspectorKenBurns">Hiệu ứng Ken Burns (M2)</label>
+                  <select id="inspectorKenBurns">
+                    <option value="none">none (Đứng yên)</option>
+                    <option value="zoom-in" selected>zoom-in (Phóng to)</option>
+                    <option value="zoom-out">zoom-out (Thu nhỏ)</option>
+                    <option value="pan-left">pan-left (Lướt sang trái)</option>
+                    <option value="pan-right">pan-right (Lướt sang phải)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group col-8">
+                  <label for="inspectorMediaSrc">Nguồn Media (Ảnh/Video/Stock query)</label>
+                  <input type="text" id="inspectorMediaSrc" placeholder="Ví dụ: stock:chipset, URL ảnh, hoặc đường dẫn...">
+                </div>
+                <div class="form-group col-4">
+                  <label for="inspectorMediaFit">Cách khít (Fit)</label>
+                  <select id="inspectorMediaFit">
+                    <option value="cover" selected>cover (Tràn viền 9:16)</option>
+                    <option value="contain">contain (Vừa khung)</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -531,12 +721,53 @@
               <span class="icon">🎙️</span>
               <span>Tải Audio MP3 (CapCut)</span>
             </a>
-            <button class="btn btn-outline" id="btnOpenInStudio">
-              <span class="icon">🎨</span>
-              <span>Mở HyperFrames Preview</span>
+            <a href="#" download id="btnDownloadCover" class="btn btn-outline" style="display: none;">
+              <span class="icon">🖼️</span>
+              <span>Tải Ảnh Bìa TikTok (cover.png)</span>
+            </a>
+            <button class="btn btn-outline" id="btnViewPublishChecklist">
+              <span class="icon">📋</span>
+              <span>Xem Checklist Đăng Bài (publish.md)</span>
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import SRT Modal (M1) -->
+  <div class="modal-overlay" id="importSrtModal" style="display: none;">
+    <div class="modal-content glass-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 class="modal-title">📥 Nhập Phụ Đề SRT Vào Dự Án (M1)</h3>
+        <button class="btn-close" id="btnCloseImportSrtModal">✕</button>
+      </div>
+      <div style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+        <p style="font-size: 0.85rem; color: #94a3b8;">Dán nội dung file .srt hoặc tải file lên để ghi đè phụ đề chuẩn xác cho video:</p>
+        <textarea id="inputSrtContent" class="code-editor" rows="10" placeholder="1
+00:00:00,500 --> 00:00:02,100
+Chào mừng các bạn đến với bản tin..."></textarea>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button class="btn btn-secondary" id="btnCancelImportSrt">Hủy</button>
+          <button class="btn btn-primary btn-glow" id="btnConfirmImportSrt">Lưu Phụ Đề Này</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Publish Checklist Modal (M7) -->
+  <div class="modal-overlay" id="publishModal" style="display: none;">
+    <div class="modal-content glass-card" style="max-width: 700px; max-height: 85vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <h3 class="modal-title">📋 Hướng Dẫn & Checklist Đăng Bài TikTok (M7)</h3>
+        <button class="btn-close" id="btnClosePublishModal">✕</button>
+      </div>
+      <div style="padding: 1.5rem; overflow-y: auto; flex: 1;">
+        <div class="caption-box" id="publishMarkdownContent" style="max-height: 420px; font-family: var(--font-sans); white-space: pre-wrap;"></div>
+      </div>
+      <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button class="btn btn-outline" id="btnCopyPublishChecklist">Sao Chép Toàn Bộ</button>
+        <button class="btn btn-secondary" id="btnDismissPublishModal">Đóng</button>
       </div>
     </div>
   </div>

@@ -156,9 +156,14 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const selectPresetUrl = document.getElementById("selectPresetUrl");
+    const selectCaptionStyleUrl = document.getElementById("selectCaptionStyleUrl");
+    const checkEnableBgmUrl = document.getElementById("checkEnableBgmUrl");
+    const checkUseOgImageUrl = document.getElementById("checkUseOgImageUrl");
+
     btnSubmitUrl.disabled = true;
     const oldBtnText = btnSubmitUrl.innerHTML;
-    btnSubmitUrl.innerHTML = `<span class="modal-spinner" style="width:18px;height:18px;border-width:2px;"></span> Đang chuẩn bị kịch bản...`;
+    btnSubmitUrl.innerHTML = `<span class="modal-spinner" style="width:14px;height:14px;border-width:2px;"></span> Đang xử lý...`;
 
     try {
       if (!currentExtractedData || currentExtractedData.url !== url) {
@@ -182,6 +187,15 @@ document.addEventListener("DOMContentLoaded", () => {
         channel: inputChannelUrl.value.trim() || "Công Nghệ 24h",
         voiceId: selectVoiceUrl.value,
         voiceProvider: "edge-tts",
+        preset: selectPresetUrl?.value || "news_45",
+        captions: {
+          enabled: true,
+          style: selectCaptionStyleUrl?.value || "tiktok-bold",
+        },
+        bgm: checkEnableBgmUrl?.checked
+          ? { src: "assets/bgm/ambient-tech.mp3", volume: 0.18, duck: true }
+          : undefined,
+        useOgImage: checkUseOgImageUrl?.checked || false,
       };
 
       await launchPipeline(payload);
@@ -582,11 +596,40 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ── Milestone M6: Timeline Editor Client Logic ───────────────────────────
   const btnModeStudio = document.getElementById("btnModeStudio");
+  const btnModeFeeds = document.getElementById("btnModeFeeds");
   const btnModeTimeline = document.getElementById("btnModeTimeline");
+  const btnModeLexicon = document.getElementById("btnModeLexicon");
+  const btnModeLibrary = document.getElementById("btnModeLibrary");
+
   const heroSection = document.querySelector(".hero-section");
   const studioLayout = document.querySelector(".studio-layout");
+  const feedsSection = document.getElementById("feedsSection");
   const timelineEditorSection = document.getElementById("timelineEditorSection");
+  const lexiconSection = document.getElementById("lexiconSection");
+  const librarySection = document.getElementById("librarySection");
 
+  const btnToggleTheme = document.getElementById("btnToggleTheme");
+  const themeIcon = document.getElementById("themeIcon");
+  const themeLabel = document.getElementById("themeLabel");
+  const btnToggleSafeZone = document.getElementById("btnToggleSafeZone");
+
+  // Feeds elements
+  const feedsTableBody = document.getElementById("feedsTableBody");
+  const feedsCountBadge = document.getElementById("feedsCountBadge");
+  const btnRefreshFeeds = document.getElementById("btnRefreshFeeds");
+  const btnRunBatchQueue = document.getElementById("btnRunBatchQueue");
+  let cachedFeedItems = [];
+
+  // Lexicon elements
+  const lexiconTableBody = document.getElementById("lexiconTableBody");
+  const lexiconCountBadge = document.getElementById("lexiconCountBadge");
+  const inputLexiconTerm = document.getElementById("inputLexiconTerm");
+  const inputLexiconPhonetic = document.getElementById("inputLexiconPhonetic");
+  const btnAddLexiconWord = document.getElementById("btnAddLexiconWord");
+  const btnSaveLexicon = document.getElementById("btnSaveLexicon");
+  let currentLexiconData = {};
+
+  // Timeline & Inspector elements
   const selectTimelineProject = document.getElementById("selectTimelineProject");
   const btnReloadTimelineProject = document.getElementById("btnReloadTimelineProject");
   const btnTimelineUndo = document.getElementById("btnTimelineUndo");
@@ -597,10 +640,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnSaveProjectScript = document.getElementById("btnSaveProjectScript");
   const btnRenderFromTimeline = document.getElementById("btnRenderFromTimeline");
   const btnCancelRenderJob = document.getElementById("btnCancelRenderJob");
+  const btnImportSrtModal = document.getElementById("btnImportSrtModal");
 
   const iframePreview = document.getElementById("iframePreview");
   const videoPreviewFallback = document.getElementById("videoPreviewFallback");
   const previewPlaceholder = document.getElementById("previewPlaceholder");
+  const previewScreen = document.getElementById("previewScreen");
   const btnPlayPause = document.getElementById("btnPlayPause");
   const timeDisplay = document.getElementById("timeDisplay");
   const transportScrubber = document.getElementById("transportScrubber");
@@ -611,9 +656,29 @@ document.addEventListener("DOMContentLoaded", () => {
   const inspectorVoiceText = document.getElementById("inspectorVoiceText");
   const inspectorTemplate = document.getElementById("inspectorTemplate");
   const inspectorDuration = document.getElementById("inspectorDuration");
+  const inspectorTransition = document.getElementById("inspectorTransition");
+  const inspectorKenBurns = document.getElementById("inspectorKenBurns");
+  const inspectorMediaSrc = document.getElementById("inspectorMediaSrc");
+  const inspectorMediaFit = document.getElementById("inspectorMediaFit");
   const btnReTtsCurrentScene = document.getElementById("btnReTtsCurrentScene");
   const metaSceneId = document.getElementById("metaSceneId");
   const metaSceneStart = document.getElementById("metaSceneStart");
+
+  // Import SRT Modal
+  const importSrtModal = document.getElementById("importSrtModal");
+  const inputSrtContent = document.getElementById("inputSrtContent");
+  const btnCloseImportSrtModal = document.getElementById("btnCloseImportSrtModal");
+  const btnCancelImportSrt = document.getElementById("btnCancelImportSrt");
+  const btnConfirmImportSrt = document.getElementById("btnConfirmImportSrt");
+
+  // Publish Modal
+  const publishModal = document.getElementById("publishModal");
+  const publishMarkdownContent = document.getElementById("publishMarkdownContent");
+  const btnClosePublishModal = document.getElementById("btnClosePublishModal");
+  const btnDismissPublishModal = document.getElementById("btnDismissPublishModal");
+  const btnCopyPublishChecklist = document.getElementById("btnCopyPublishChecklist");
+  const btnViewPublishChecklist = document.getElementById("btnViewPublishChecklist");
+  const btnDownloadCover = document.getElementById("btnDownloadCover");
 
   const trackRulerArea = document.getElementById("trackRulerArea");
   const trackScenesContent = document.getElementById("trackScenesContent");
@@ -630,28 +695,79 @@ document.addEventListener("DOMContentLoaded", () => {
   let lastFrameTimestamp = null;
   let undoStack = [];
   let redoStack = [];
+  let isSafeZoneActive = false;
 
-  // Switch between Studio and Timeline mode
+  // ── Switch between 5 Modes (Studio, Feeds, Timeline, Lexicon, Library) ───
   function switchMode(mode) {
-    if (mode === "timeline") {
-      btnModeStudio.classList.remove("active");
-      btnModeTimeline.classList.add("active");
-      heroSection.style.display = "none";
-      studioLayout.style.display = "none";
-      timelineEditorSection.style.display = "flex";
+    const allModeBtns = [btnModeStudio, btnModeFeeds, btnModeTimeline, btnModeLexicon, btnModeLibrary];
+    allModeBtns.forEach((b) => b?.classList.remove("active"));
+
+    heroSection.style.display = mode === "studio" ? "block" : "none";
+    studioLayout.style.display = mode === "studio" ? "grid" : "none";
+    if (feedsSection) feedsSection.style.display = mode === "feeds" ? "flex" : "none";
+    if (timelineEditorSection) timelineEditorSection.style.display = mode === "timeline" ? "flex" : "none";
+    if (lexiconSection) lexiconSection.style.display = mode === "lexicon" ? "flex" : "none";
+    if (librarySection) librarySection.style.display = mode === "library" ? "block" : "none";
+
+    if (mode === "studio") {
+      btnModeStudio?.classList.add("active");
+    } else if (mode === "feeds") {
+      btnModeFeeds?.classList.add("active");
+      loadFeedsData();
+    } else if (mode === "timeline") {
+      btnModeTimeline?.classList.add("active");
       loadProjectsList();
-    } else {
-      btnModeTimeline.classList.remove("active");
-      btnModeStudio.classList.add("active");
-      heroSection.style.display = "block";
-      studioLayout.style.display = "grid";
-      timelineEditorSection.style.display = "none";
+    } else if (mode === "lexicon") {
+      btnModeLexicon?.classList.add("active");
+      loadLexiconData();
+    } else if (mode === "library") {
+      btnModeLibrary?.classList.add("active");
+      fetchVideoList();
+    }
+
+    if (mode !== "timeline") {
       stopPlayback();
     }
   }
 
-  btnModeStudio.addEventListener("click", () => switchMode("studio"));
-  btnModeTimeline.addEventListener("click", () => switchMode("timeline"));
+  btnModeStudio?.addEventListener("click", () => switchMode("studio"));
+  btnModeFeeds?.addEventListener("click", () => switchMode("feeds"));
+  btnModeTimeline?.addEventListener("click", () => switchMode("timeline"));
+  btnModeLexicon?.addEventListener("click", () => switchMode("lexicon"));
+  btnModeLibrary?.addEventListener("click", () => switchMode("library"));
+
+  // ── Theme Switcher (M3 Dual Theme) ───────────────────────────────────────
+  btnToggleTheme?.addEventListener("click", () => {
+    const isLight = document.body.classList.toggle("theme-light-pro");
+    if (isLight) {
+      themeIcon.textContent = "☀️";
+      themeLabel.textContent = "Light Pro";
+      showToast("Đã chuyển sang Theme Light Pro");
+    } else {
+      themeIcon.textContent = "🌙";
+      themeLabel.textContent = "Dark Neon";
+      showToast("Đã chuyển sang Theme Dark Neon");
+    }
+  });
+
+  // ── TikTok Safe Zone Toggle (M5) ─────────────────────────────────────────
+  btnToggleSafeZone?.addEventListener("click", () => {
+    isSafeZoneActive = !isSafeZoneActive;
+    let guide = previewScreen?.querySelector(".safe-zone-guide");
+    if (isSafeZoneActive) {
+      if (!guide && previewScreen) {
+        guide = document.createElement("div");
+        guide.className = "safe-zone-guide";
+        previewScreen.appendChild(guide);
+      }
+      btnToggleSafeZone.classList.add("active");
+      showToast("Đã bật lưới Safe Zone TikTok (380px đáy, 120px phải)");
+    } else {
+      if (guide) guide.remove();
+      btnToggleSafeZone.classList.remove("active");
+      showToast("Đã tắt lưới Safe Zone");
+    }
+  });
 
   // Fetch projects list for timeline selector
   async function loadProjectsList(preferredSlug) {
@@ -835,6 +951,11 @@ document.addEventListener("DOMContentLoaded", () => {
         inspectorDuration.value = foundClip.duration.toFixed(1);
         metaSceneId.textContent = scene.id;
         metaSceneStart.textContent = `${foundClip.start.toFixed(1)}s`;
+
+        if (inspectorTransition) inspectorTransition.value = scene.transition?.type || "cut";
+        if (inspectorKenBurns) inspectorKenBurns.value = scene.media?.fx || (scene.templateData?.kenBurns || "zoom-in");
+        if (inspectorMediaSrc) inspectorMediaSrc.value = scene.media?.src || "";
+        if (inspectorMediaFit) inspectorMediaFit.value = scene.media?.fit || "cover";
       }
     }
   }
@@ -1073,10 +1194,348 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Inspector Media & Transition Changes (M2, M5)
+  inspectorTransition?.addEventListener("change", () => {
+    if (!currentProject || !selectedClipId) return;
+    const clip = currentProject.timelineState.tracks[0]?.clips.find((c) => c.id === selectedClipId);
+    if (!clip?.sceneId) return;
+    const scene = currentProject.script.scenes.find((s) => s.id === clip.sceneId);
+    if (scene) {
+      if (!scene.transition) scene.transition = { type: "cut", duration: 0.3 };
+      scene.transition.type = inspectorTransition.value;
+      showToast(`Đã đổi chuyển cảnh thành: ${inspectorTransition.value}`);
+    }
+  });
+
+  inspectorKenBurns?.addEventListener("change", () => {
+    if (!currentProject || !selectedClipId) return;
+    const clip = currentProject.timelineState.tracks[0]?.clips.find((c) => c.id === selectedClipId);
+    if (!clip?.sceneId) return;
+    const scene = currentProject.script.scenes.find((s) => s.id === clip.sceneId);
+    if (scene) {
+      if (!scene.media) scene.media = { type: "image", src: "", fit: "cover", fx: "zoom-in" };
+      scene.media.fx = inspectorKenBurns.value;
+      showToast(`Hiệu ứng Ken Burns: ${inspectorKenBurns.value}`);
+    }
+  });
+
+  inspectorMediaSrc?.addEventListener("change", () => {
+    if (!currentProject || !selectedClipId) return;
+    const clip = currentProject.timelineState.tracks[0]?.clips.find((c) => c.id === selectedClipId);
+    if (!clip?.sceneId) return;
+    const scene = currentProject.script.scenes.find((s) => s.id === clip.sceneId);
+    if (scene) {
+      const srcVal = inspectorMediaSrc.value.trim();
+      if (!scene.media) scene.media = { type: "image", src: srcVal, fit: "cover", fx: "zoom-in" };
+      else scene.media.src = srcVal;
+      showToast(`Đã gắn nguồn media: ${srcVal}`);
+    }
+  });
+
+  inspectorMediaFit?.addEventListener("change", () => {
+    if (!currentProject || !selectedClipId) return;
+    const clip = currentProject.timelineState.tracks[0]?.clips.find((c) => c.id === selectedClipId);
+    if (!clip?.sceneId) return;
+    const scene = currentProject.script.scenes.find((s) => s.id === clip.sceneId);
+    if (scene) {
+      if (!scene.media) scene.media = { type: "image", src: "", fit: "cover", fx: "zoom-in" };
+      scene.media.fit = inspectorMediaFit.value;
+    }
+  });
+
+  // ── Import SRT Modal (M1) ────────────────────────────────────────────────
+  btnImportSrtModal?.addEventListener("click", () => {
+    if (!currentProject) {
+      showToast("Vui lòng chọn hoặc mở một dự án trước!");
+      return;
+    }
+    inputSrtContent.value = "";
+    importSrtModal.style.display = "flex";
+  });
+
+  btnCloseImportSrtModal?.addEventListener("click", () => {
+    importSrtModal.style.display = "none";
+  });
+  btnCancelImportSrt?.addEventListener("click", () => {
+    importSrtModal.style.display = "none";
+  });
+
+  btnConfirmImportSrt?.addEventListener("click", async () => {
+    const srtContent = inputSrtContent.value.trim();
+    if (!srtContent) {
+      showToast("Vui lòng dán nội dung file SRT!");
+      return;
+    }
+
+    try {
+      btnConfirmImportSrt.disabled = true;
+      btnConfirmImportSrt.textContent = "Đang lưu...";
+
+      const res = await fetch(`/api/projects/${currentProject.slug}/captions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ srtContent }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Lỗi import SRT");
+
+      showToast(`Đã nhập thành công ${data.count} cues phụ đề!`);
+      importSrtModal.style.display = "none";
+      await loadProjectDetail(currentProject.slug);
+    } catch (err) {
+      console.error(err);
+      showToast(`Lỗi: ${err.message}`);
+    } finally {
+      btnConfirmImportSrt.disabled = false;
+      btnConfirmImportSrt.textContent = "Lưu Phụ Đề Này";
+    }
+  });
+
+  // ── Publish Kit Modal (M7) ───────────────────────────────────────────────
+  btnViewPublishChecklist?.addEventListener("click", async () => {
+    if (!activeVideoPlayer.src) return;
+    // Lấy slug từ player title hoặc active project
+    const currentSlug = currentProject ? currentProject.slug : (selectTimelineProject?.value || "");
+    if (!currentSlug) return;
+
+    try {
+      const res = await fetch(`/api/projects/${currentSlug}/publish`);
+      const data = await res.json();
+      publishMarkdownContent.textContent = data.publishContent || "Chưa có checklist đăng bài.";
+
+      if (data.hasCover && btnDownloadCover) {
+        btnDownloadCover.href = data.coverUrl;
+        btnDownloadCover.download = `${currentSlug}-cover.png`;
+        btnDownloadCover.style.display = "inline-flex";
+      }
+
+      publishModal.style.display = "flex";
+    } catch (err) {
+      console.error(err);
+      showToast("Không thể tải thông tin publish");
+    }
+  });
+
+  btnClosePublishModal?.addEventListener("click", () => {
+    publishModal.style.display = "none";
+  });
+  btnDismissPublishModal?.addEventListener("click", () => {
+    publishModal.style.display = "none";
+  });
+
+  btnCopyPublishChecklist?.addEventListener("click", () => {
+    navigator.clipboard.writeText(publishMarkdownContent.textContent).then(() => {
+      showToast("Đã sao chép toàn bộ checklist đăng bài vào clipboard!");
+    });
+  });
+
+  // ── Feeds RSS Logic (Milestone M7) ───────────────────────────────────────
+  async function loadFeedsData() {
+    feedsTableBody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align: center; color: #94a3b8; padding: 2rem;">
+          <span class="modal-spinner" style="width: 18px; height: 18px; display: inline-block;"></span> Đang quét các nguồn RSS...
+        </td>
+      </tr>
+    `;
+
+    try {
+      const res = await fetch("/api/feeds");
+      const data = await res.json();
+      cachedFeedItems = data.items || [];
+      feedsCountBadge.textContent = `${cachedFeedItems.length} Bài Viết`;
+
+      if (cachedFeedItems.length === 0) {
+        feedsTableBody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; color: #94a3b8; padding: 2rem;">
+              Không tìm thấy bài viết nào hoặc không thể kết nối mạng ngoài.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      feedsTableBody.innerHTML = "";
+      cachedFeedItems.forEach((item, idx) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td style="font-weight: 700; color: #94a3b8;">#${idx + 1}</td>
+          <td><span class="feed-source-pill">${escapeHtml(item.sourceName || "News")}</span></td>
+          <td>
+            <a href="${escapeHtml(item.link)}" target="_blank" style="color: #fff; text-decoration: none; font-weight: 600;">
+              ${escapeHtml(item.title)}
+            </a>
+          </td>
+          <td style="color: #94a3b8; font-size: 0.78rem;">${item.pubDate ? escapeHtml(item.pubDate.slice(0, 22)) : "Mới nhất"}</td>
+          <td style="text-align: right;">
+            <button class="btn btn-sm btn-primary btn-glow btn-create-feed-video" data-index="${idx}">
+              <span>⚡ Tạo Video</span>
+            </button>
+          </td>
+        `;
+
+        const btnCreate = tr.querySelector(".btn-create-feed-video");
+        btnCreate?.addEventListener("click", () => {
+          launchPipeline({
+            title: item.title,
+            content: item.description || item.title,
+            url: item.link,
+            domain: item.domain || "news",
+            channel: "Tin Tức AI 24h",
+          });
+        });
+
+        feedsTableBody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error(err);
+      feedsTableBody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align: center; color: #ef4444; padding: 2rem;">
+            Lỗi nạp tin tức RSS: ${escapeHtml(err.message)}
+          </td>
+        </tr>
+      `;
+    }
+  }
+
+  btnRefreshFeeds?.addEventListener("click", () => {
+    loadFeedsData();
+    showToast("Đang làm mới danh sách tin RSS...");
+  });
+
+  btnRunBatchQueue?.addEventListener("click", async () => {
+    if (cachedFeedItems.length === 0) {
+      showToast("Chưa có bài viết nào để chạy batch!");
+      return;
+    }
+    const toRun = cachedFeedItems.slice(0, 3);
+    if (confirm(`Bạn có chắc muốn tự động tạo video cho ${toRun.length} bài viết liên tiếp trong hàng đợi Batch Queue?`)) {
+      try {
+        btnRunBatchQueue.disabled = true;
+        btnRunBatchQueue.textContent = "Đang kích hoạt hàng đợi...";
+        const res = await fetch("/api/feeds/batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: toRun, maxJobs: 3 }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        showToast("Hàng đợi Batch Queue đã bắt đầu xử lý!");
+      } catch (err) {
+        showToast(`Lỗi: ${err.message}`);
+      } finally {
+        btnRunBatchQueue.disabled = false;
+        btnRunBatchQueue.innerHTML = `<span class="icon">🚀</span><span>Chạy Batch Queue (3 Bài)</span>`;
+      }
+    }
+  });
+
+  // ── Lexicon Pronunciation Dictionary Logic (Milestone M5) ────────────────
+  async function loadLexiconData() {
+    lexiconTableBody.innerHTML = `
+      <tr>
+        <td colspan="4" style="text-align: center; color: #94a3b8; padding: 1.5rem;">
+          <span class="modal-spinner" style="width: 16px; height: 16px; display: inline-block;"></span> Đang đọc từ điển...
+        </td>
+      </tr>
+    `;
+
+    try {
+      const res = await fetch("/api/lexicon");
+      currentLexiconData = await res.json();
+      renderLexiconTable();
+    } catch (err) {
+      console.error(err);
+      showToast("Không thể tải từ điển phát âm");
+    }
+  }
+
+  function renderLexiconTable() {
+    const entries = Object.entries(currentLexiconData);
+    lexiconCountBadge.textContent = `${entries.length} Từ`;
+
+    if (entries.length === 0) {
+      lexiconTableBody.innerHTML = `
+        <tr>
+          <td colspan="4" style="text-align: center; color: #94a3b8; padding: 1.5rem;">
+            Chưa có từ vựng nào trong từ điển. Hãy thêm từ đầu tiên của bạn ở trên!
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    lexiconTableBody.innerHTML = "";
+    entries.forEach(([term, phonetic], idx) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td style="font-weight: 700; color: #94a3b8;">#${idx + 1}</td>
+        <td style="font-weight: 700; color: var(--accent-cyan); font-family: var(--font-mono);">${escapeHtml(term)}</td>
+        <td style="color: #f1f5f9;">${escapeHtml(phonetic)}</td>
+        <td style="text-align: center;">
+          <button class="btn btn-sm btn-outline text-danger btn-delete-lexicon" data-term="${escapeHtml(term)}" title="Xóa từ này">
+            ✕
+          </button>
+        </td>
+      `;
+
+      const btnDelete = tr.querySelector(".btn-delete-lexicon");
+      btnDelete?.addEventListener("click", () => {
+        delete currentLexiconData[term];
+        renderLexiconTable();
+        showToast(`Đã xóa '${term}'. Hãy bấm Lưu Từ Điển.`);
+      });
+
+      lexiconTableBody.appendChild(tr);
+    });
+  }
+
+  btnAddLexiconWord?.addEventListener("click", () => {
+    const term = inputLexiconTerm.value.trim();
+    const phonetic = inputLexiconPhonetic.value.trim();
+
+    if (!term || !phonetic) {
+      showToast("Vui lòng nhập cả từ gốc và phiên âm đọc!");
+      return;
+    }
+
+    currentLexiconData[term] = phonetic;
+    inputLexiconTerm.value = "";
+    inputLexiconPhonetic.value = "";
+    renderLexiconTable();
+    showToast(`Đã thêm '${term}' ➔ '${phonetic}'. Bấm Lưu Từ Điển để áp dụng.`);
+  });
+
+  btnSaveLexicon?.addEventListener("click", async () => {
+    try {
+      btnSaveLexicon.disabled = true;
+      btnSaveLexicon.textContent = "Đang lưu...";
+
+      const res = await fetch("/api/lexicon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lexicon: currentLexiconData }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      showToast("Đã lưu từ điển phát âm lexicon.json thành công!");
+    } catch (err) {
+      console.error(err);
+      showToast(`Lỗi: ${err.message}`);
+    } finally {
+      btnSaveLexicon.disabled = false;
+      btnSaveLexicon.innerHTML = `<span>💾</span><span>Lưu Từ Điển</span>`;
+    }
+  });
+
   // Render Video from Timeline
   btnRenderFromTimeline.addEventListener("click", () => {
     if (!currentProject) return;
-    submitRenderJob({ script: currentProject.script });
+    launchPipeline({ script: currentProject.script });
   });
 
   // Cancel Job Event

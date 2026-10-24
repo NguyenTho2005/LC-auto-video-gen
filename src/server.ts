@@ -22,6 +22,10 @@ import {
 import { getDurationSec, concatWithSilence } from "./assets/audio-tools.js";
 import { createTtsClient } from "./tts/index.js";
 import { applyLexicon } from "./tts/lexicon.js";
+import { loadFeedsConfig, fetchFeedItems } from "./ingest/feed-collector.js";
+import { BatchQueue } from "./ingest/batch-queue.js";
+import { generatePublishChecklist } from "./ingest/publish-kit.js";
+import { parseSrt, generateSrt } from "./captions/srt.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, "..");
@@ -729,6 +733,130 @@ app.post("/api/projects/:slug/re-tts/:sceneId", async (req, res) => {
     });
   } catch (err: any) {
     res.status(500).json({ error: `Re-TTS thất bại: ${err.message}` });
+  }
+});
+
+// ── API: RSS Feeds (M7) ────────────────────────────────────────────────────
+app.get("/api/feeds", async (req, res) => {
+  try {
+    const sources = loadFeedsConfig();
+    const items = await fetchFeedItems(sources);
+    res.json({ sources, items });
+  } catch (err: any) {
+    res.status(500).json({ error: `Lỗi quét feeds: ${err.message}` });
+  }
+});
+
+// ── API: Batch Generate from Feeds (M7) ────────────────────────────────────
+app.post("/api/feeds/batch", async (req, res) => {
+  try {
+    const { items, maxJobs } = req.body;
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "Danh sách items không hợp lệ" });
+    }
+
+    const queue = new BatchQueue();
+    // Chạy bất đồng bộ
+    const resultPromise = queue.process(items, { maxJobs: maxJobs || 3 });
+    res.json({ success: true, message: `Đã đưa ${items.length} bài vào hàng đợi batch` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── API: Lexicon Dictionary (M5) ───────────────────────────────────────────
+const LEXICON_FILE = join(PROJECT_ROOT, "config", "lexicon.json");
+
+app.get("/api/lexicon", async (req, res) => {
+  try {
+    if (!existsSync(LEXICON_FILE)) {
+      return res.json({});
+    }
+    const data = JSON.parse(await readFile(LEXICON_FILE, "utf-8"));
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/lexicon", async (req, res) => {
+  try {
+    const { lexicon } = req.body;
+    if (!lexicon || typeof lexicon !== "object") {
+      return res.status(400).json({ error: "Dữ liệu lexicon không hợp lệ" });
+    }
+    await writeFile(LEXICON_FILE, JSON.stringify(lexicon, null, 2), "utf-8");
+    res.json({ success: true, lexicon });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── API: Project Publish Kit Info (M7) ─────────────────────────────────────
+app.get("/api/projects/:slug/publish", async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const folder = join(OUTPUT_DIR, slug);
+    const publishFile = join(folder, "publish.md");
+    const coverFile = join(folder, "cover.png");
+    const scriptFile = join(folder, "script.json");
+
+    let publishContent = "";
+    if (existsSync(publishFile)) {
+      publishContent = await readFile(publishFile, "utf-8");
+    } else if (existsSync(scriptFile)) {
+      const script = JSON.parse(await readFile(scriptFile, "utf-8"));
+      publishContent = generatePublishChecklist(
+        {
+          suggestedTitle: script.metadata?.title,
+          channelName: script.metadata?.channel,
+          sourceUrl: script.metadata?.source?.url,
+        },
+        script
+      );
+    }
+
+    res.json({
+      slug,
+      publishContent,
+      hasCover: existsSync(coverFile),
+      coverUrl: existsSync(coverFile) ? `/api/videos/${slug}/file/cover.png` : null,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── API: Captions Import (M1) ──────────────────────────────────────────────
+app.post("/api/projects/:slug/captions", async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { srtContent } = req.body;
+    if (!srtContent) return res.status(400).json({ error: "Cần srtContent" });
+
+    const folder = join(OUTPUT_DIR, slug);
+    if (!existsSync(folder)) return res.status(404).json({ error: "Project not found" });
+
+    const cues = parseSrt(srtContent);
+    await writeFile(join(folder, "captions.srt"), srtContent, "utf-8");
+    await writeFile(join(folder, "captions.json"), JSON.stringify(cues, null, 2), "utf-8");
+
+    // Đồng bộ vào script.json nếu có
+    const scriptFile = join(folder, "script.json");
+    if (existsSync(scriptFile)) {
+      const script = JSON.parse(await readFile(scriptFile, "utf-8"));
+      if (!script.timeline) script.timeline = {};
+      script.timeline.captionCues = cues.map((c: any) => ({
+        start: c.startMs / 1000,
+        end: c.endMs / 1000,
+        text: c.text,
+      }));
+      await writeFile(scriptFile, JSON.stringify(script, null, 2), "utf-8");
+    }
+
+    res.json({ success: true, count: cues.length });
+  } catch (err: any) {
+    res.status(400).json({ error: `Lỗi import SRT: ${err.message}` });
   }
 });
 
