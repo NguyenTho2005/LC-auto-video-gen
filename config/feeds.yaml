@@ -1,0 +1,24 @@
+feeds:
+  - id: vnexpress-sohoa
+    name: VnExpress Số Hóa
+    url: https://vnexpress.net/rss/so-hoa.rss
+    category: cong-nghe
+    enabled: true
+
+  - id: tuoitre-nhipsongso
+    name: Tuổi Trẻ Nhịp Sống Số
+    url: https://tuoitre.vn/rss/nhip-song-so.rss
+    category: cong-nghe
+    enabled: true
+
+  - id: genk
+    name: GenK Tin Mới
+    url: https://genk.vn/rss/tin-moi.rss
+    category: cong-nghe
+    enabled: true
+
+  - id: thanhnien-congnghe
+    name: Thanh Niên Công Nghệ
+    url: https://thanhnien.vn/rss/cong-nghe.rss
+    category: cong-nghe
+    enabled: true

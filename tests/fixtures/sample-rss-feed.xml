@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Tin Công Nghệ 24h Mẫu</title>
+    <item>
+      <title><![CDATA[Nvidia công bố kiến trúc GPU Rubin thế hệ mới]]></title>
+      <link>https://vnexpress.net/nvidia-rubin-gpu-4801234.html</link>
+      <guid>https://vnexpress.net/nvidia-rubin-gpu-4801234.html</guid>
+      <pubDate>Thu, 24 Oct 2026 10:00:00 +0700</pubDate>
+      <description><![CDATA[Nvidia vừa công bố thế hệ chip AI tiếp theo mang tên Rubin với bộ nhớ HBM4 siêu tốc và băng thông đột phá.]]></description>
+    </item>
+    <item>
+      <title><![CDATA[OpenAI giới thiệu mô hình suy luận đa phương thức]]></title>
+      <link>https://vnexpress.net/openai-multimodal-reasoning-4801235.html</link>
+      <guid>https://vnexpress.net/openai-multimodal-reasoning-4801235.html</guid>
+      <pubDate>Thu, 24 Oct 2026 09:30:00 +0700</pubDate>
+      <description><![CDATA[Mô hình trí tuệ nhân tạo mới có khả năng suy luận logic theo chuỗi tư duy kết hợp hình ảnh và mã nguồn.]]></description>
+    </item>
+  </channel>
+</rss>

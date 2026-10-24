@@ -2,7 +2,7 @@
 
 > **Dành cho AI Agent tiếp nhận dự án.**  
 > Ngày cập nhật: 24/10/2026.  
-> Trạng thái hiện tại: **Đã hoàn thành 100% Milestone M0 (Audit), M1 (Caption & SRT), M2 (Media thật), M3 (Template review & Themes), M4 (LLM Script & Duyệt kịch bản), M5 (Audio polish, motion, preset), M6 (Web UI & Timeline Editor)** trên nhánh `feat/m6-web-ui`.
+> Trạng thái hiện tại: **ĐÃ HOÀN THÀNH TOÀN DIỆN 100% CẢ 8 MILESTONE (M0 → M7) THEO PRD2.md** trên nhánh `feat/m7-ingest-ci`. Tất cả các tiêu chí chấp nhận đều đã đạt với 154/154 unit & integration tests passed.
 
 ---
 
@@ -206,37 +206,75 @@ AUTO_GEN_VIDEO/
   - `npx tsc --noEmit`: 0 lỗi.
   - `npm test`: 25 test files, **147/147 tests passed 100%** (13 tests mới cho timeline model, commands, snap, ripple delete, undo/redo).
 
+### 3.9. Milestone M7 — Thu thập tin, hỗ trợ đăng, CI/CD (nhánh `feat/m7-ingest-ci`)
+- **Cấu hình Feeds RSS (`config/feeds.yaml` & `config/feeds.json`):**
+  - Cấu hình sẵn 4 nguồn cấp dữ liệu công nghệ uy tín: VnExpress Số Hóa, Tuổi Trẻ Nhịp Sống Số, GenK, Thanh Niên Công Nghệ.
+- **Module Thu thập tin tức RSS (`src/ingest/feed-collector.ts`):**
+  - Trình phân tích XML RSS 2.0 / Atom thuần TypeScript, xử lý CDATA, decode HTML entities, loại bỏ thẻ HTML rác.
+  - Hàm `normalizeUrl` loại bỏ tracking tokens (`utm_*`, `fbclid`, `ref`).
+  - Hàm `filterDuplicateItems` loại bỏ bài trùng lặp link hoặc tiêu đề chuẩn hóa.
+- **Gói hỗ trợ Đăng bài (Publish Kit) (`src/ingest/publish-kit.ts`):**
+  - Xuất `publish.md` chuẩn Markdown chứa tiêu đề gợi ý, 4–5 hashtag, ghi công nguồn tin gốc và **nhắc nhở bắt buộc gắn nhãn "Nội dung do AI tạo" (AI-generated content)** theo chính sách hiện hành của TikTok và YouTube.
+  - Trích xuất ảnh bìa `cover.png` tỉ lệ 9:16 sắc nét từ video bằng FFmpeg để làm thumbnail TikTok.
+  - Tích hợp tự động vào Step 8 của `src/pipeline.ts`.
+- **Hàng đợi tạo video hàng loạt (Batch Queue) (`src/ingest/batch-queue.ts`):**
+  - Xử lý tuần tự (`sequential processing`) từng bài viết từ RSS feed.
+  - Cơ chế cô lập lỗi (error isolation): một bài bị lỗi mạng hoặc kịch bản không làm dừng cả hàng đợi, tự động tiếp tục các bài tiếp theo và xuất báo cáo tổng kết (`completed`, `failed`).
+- **CLI Ingest (`src/ingest/cli.ts` & script `npm run ingest`):**
+  - `npm run ingest -- --list`: Liệt kê bài viết mới từ feeds.
+  - `npm run ingest -- --pick <index>`: Tạo video cho một bài viết cụ thể.
+  - `npm run ingest -- --batch <maxCount>`: Chạy tự động cho N bài liên tiếp.
+  - Hỗ trợ cờ `--file <path>` nạp file RSS XML cục bộ khi test offline.
+- **Tự động hóa CI/CD (.github/workflows/ci.yml):**
+  - Workflow GitHub Actions tự động kiểm tra `npx tsc --noEmit` và `npm test` trên môi trường Ubuntu / Node.js 22.
+- **Kết quả nghiệm thu M7:**
+  - `npx tsc --noEmit`: 0 lỗi.
+  - `npm test`: 26 test files, **154/154 tests passed 100%** (7 tests mới cho RSS collector, deduplication, batch queue, publish kit).
+
 ---
 
 ## 4. Trạng thái hiện tại của dự án
 
-- **Nhánh Git hiện tại:** `feat/m6-web-ui`.
-- **Trạng thái mã nguồn:** 0 lỗi TypeScript, 147/147 tests Vitest passed 100%.
-- **Tiêu chí chấp nhận M6:** Đạt 100%:
-  1. ADR chốt kiến trúc trước khi code (`docs/adr-ui.md`).
-  2. Mô hình timeline + Command + undo/redo + `migrate` v1→v2 trong lõi có test Vitest độc lập 100%.
-  3. Server local + Web UI đa track, có thao tác split/ripple delete/snap, sửa voiceText/templateData, Re-TTS từng cảnh, render có tiến độ và huỷ, mở project trong `output/`.
-  4. Tương thích ngược: CLI cũ (`npm run pipeline`, `rerender`) hoạt động nguyên vẹn.
+- **Nhánh Git hiện tại:** `feat/m7-ingest-ci`.
+- **Trạng thái mã nguồn:** 0 lỗi TypeScript strict mode, **154/154 tests Vitest passed 100%**.
+- **Tiêu chí chấp nhận PRD2:** **ĐÃ HOÀN THÀNH 100% TẤT CẢ 8 MILESTONE (M0 → M7)**:
+  - ✅ **M0 (Audit & Baseline):** Làm rõ kiến trúc, giải quyết mâu thuẫn tài liệu, 60 tests passed.
+  - ✅ **M1 (Captions & SRT):** Karaoke sync từng từ, HTML/CSS/GSAP caption layer, import/export SRT, 77 tests passed.
+  - ✅ **M2 (Media thật):** Stock Pexels/Pixabay, screenshot URL, Ken Burns, manifest bản quyền `media.json`, 86 tests passed.
+  - ✅ **M3 (Template review & Themes):** 6 template review mới (tổng 12 templates), dual-theme (dark-neon & light-pro), 106 tests passed.
+  - ✅ **M4 (LLM Script & Duyệt kịch bản):** Anthropic & OpenAI providers, kiểm tra số liệu so với nguồn, xuất `script.review.md`, 125 tests passed.
+  - ✅ **M5 (Audio polish, motion, preset):** BGM ducking với FFmpeg sidechain, từ điển phát âm Lexicon, chuyển cảnh transition (cut, fade, slide, zoom), safe-zone TikTok, 134 tests passed.
+  - ✅ **M6 (Web UI & Timeline Editor):** Express server API, Headless Timeline model (Command Pattern, Undo/Redo, Snap, Ripple Delete), Live Preview 9:16 đồng bộ playhead, Re-TTS từng cảnh, 147 tests passed.
+  - ✅ **M7 (RSS Ingest, Publish Kit, CI):** RSS collector, batch queue xử lý tuần tự, xuất `cover.png` & `publish.md`, GitHub Actions CI, 154 tests passed.
 
 ---
 
-## 5. Bước tiếp theo cần làm ngay (Immediate Next Step: Milestone M7)
+## 5. Hướng dẫn vận hành cho AI Agent & Kỹ sư tiếp nhận
 
-Nhiệm vụ tiếp theo là **Milestone M7 (Thu thập tin, hỗ trợ đăng, CI/CD)** theo đúng prompt **P-M7** trong `PRD2.md` Mục B4:
+Hệ thống đã đạt mức độ hoàn thiện sản phẩm cao (Production-Ready). Các lệnh vận hành chính:
 
-1. **Khởi tạo nhánh làm việc mới:**
+1. **Khởi động Giao diện Web Studio & Timeline Editor:**
    ```bash
-   git checkout -b feat/m7-ingest-ci
+   npm run web
+   # Mở trình duyệt tại http://localhost:3000
    ```
-2. **Các hạng mục cần làm ở M7:**
-   - **Cấu hình Feeds RSS (`config/feeds.yaml`):** Danh sách nguồn cấp dữ liệu (VnExpress, Tuổi Trẻ, GenK...).
-   - **Module Thu thập tin (`src/ingest/feed-collector.ts`):** Đọc RSS, bóc tách bài mới, lọc trùng lặp theo URL/title, hỗ trợ CLI liệt kê và chọn bài.
-   - **Hàng đợi tạo video hàng loạt (Batch Queue):** Xử lý tuần tự từng bài, ghi log chi tiết, bài bị lỗi không làm dừng cả hàng.
-   - **Hỗ trợ Đăng bài (Publish Kit):**
-     - Xuất ảnh bìa `cover.png` (frame 9:16 chọn từ video hoặc hook) tối ưu làm thumbnail TikTok.
-     - Xuất checklist `publish.md` (tiêu đề, 4 hashtag, ghi nguồn gốc, nhãn nội dung AI, bản quyền media).
-   - **Tự động hóa CI/CD:** Tạo GitHub Actions workflow `.github/workflows/ci.yml` tự động kiểm tra `npx tsc --noEmit` và `npm test` trên môi trường Ubuntu/Node 22.
-3. **Quy trình nghiệm thu:**
-   - Unit tests cho module RSS Ingest và Batch Queue (dùng mock data / Fake provider).
-   - Chạy `qa-verify` (`tsc --noEmit`, `npm test`).
-   - Cập nhật tài liệu hoàn thành vào `docs/handover-brief.md`.
+2. **Quét tin tức RSS và tạo video tự động:**
+   ```bash
+   npm run ingest -- --list           # Xem tin mới
+   npm run ingest -- --pick 1         # Làm video cho bài số 1
+   npm run ingest -- --batch 3        # Làm video tự động cho 3 bài liên tiếp
+   ```
+3. **Tạo kịch bản LLM qua dòng lệnh:**
+   ```bash
+   npm run script -- "https://vnexpress.net/..." --preset news_45 --out output/tin-moi
+   ```
+4. **Render video từ file kịch bản:**
+   ```bash
+   npm run pipeline -- output/tin-moi/script.json
+   ```
+5. **Kiểm tra chất lượng mã nguồn:**
+   ```bash
+   npx tsc --noEmit   # Kiểm tra type TypeScript
+   npm test           # Chạy toàn bộ 154 test suites
+   ```
+

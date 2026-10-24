@@ -19,6 +19,7 @@ import type { TimedWord, CaptionCue } from "./captions/types.js";
 import { processSceneMedia } from "./media/media-manager.js";
 import { PexelsProvider, PixabayProvider } from "./media/stock-provider.js";
 import { applyLexicon } from "./tts/lexicon.js";
+import { generatePublishChecklist, extractCoverFrame } from "./ingest/publish-kit.js";
 
 const TOTAL_STEPS = 8;
 const DURATION_MIN_SEC = 48;
@@ -365,10 +366,34 @@ export async function runPipeline(scriptPath: string): Promise<void> {
   await renderWithHyperframes({ compositionDir: outputDir, outputPath: videoPath });
 
   // STEP 8
-  log.step(8, TOTAL_STEPS, "Done");
+  log.step(8, TOTAL_STEPS, "Generate publish kit (publish.md + cover.png) & Finalize");
+  const publishMd = generatePublishChecklist(
+    {
+      suggestedTitle: script.metadata.title,
+      channelName: script.metadata.channel,
+      sourceUrl: script.metadata.source.url,
+      sourceName: script.metadata.source.domain,
+    },
+    script
+  );
+  await writeFile(join(outputDir, "publish.md"), publishMd, "utf8");
+
+  // Extract cover frame if video exists
+  const coverPath = join(outputDir, "cover.png");
+  if (existsSync(videoPath)) {
+    try {
+      await extractCoverFrame(videoPath, coverPath, 1.0);
+      log.info(`  Cover thumbnail: ${coverPath}`);
+    } catch (coverErr: any) {
+      log.warn(`  Could not extract cover frame: ${coverErr.message}`);
+    }
+  }
+
   console.log("\n=== Result ===");
-  console.log(`Video:  ${videoPath}`);
-  console.log(`Audio:  ${voiceMp3}  (cho CapCut)`);
-  console.log(`Script: ${join(outputDir, "script.txt")}  (cho CapCut auto-caption)`);
+  console.log(`Video:   ${videoPath}`);
+  console.log(`Audio:   ${voiceMp3}  (cho CapCut)`);
+  console.log(`Script:  ${join(outputDir, "script.txt")}  (cho CapCut auto-caption)`);
+  console.log(`Publish: ${join(outputDir, "publish.md")}`);
+  console.log(`Cover:   ${coverPath}`);
   console.log(`Tong thoi luong: ${totalAudioSec.toFixed(2)}s`);
 }
