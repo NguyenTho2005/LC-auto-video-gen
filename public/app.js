@@ -574,9 +574,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target === playerModal) closePlayerModal();
   });
 
-  btnOpenStudioPreview.addEventListener("click", () => {
-    window.open("http://localhost:3002", "_blank");
-  });
+  if (btnOpenStudioPreview) {
+    btnOpenStudioPreview.addEventListener("click", () => {
+      window.open("http://localhost:3002", "_blank");
+    });
+  }
 
   // ── Milestone M6: Timeline Editor Client Logic ───────────────────────────
   const btnModeStudio = document.getElementById("btnModeStudio");

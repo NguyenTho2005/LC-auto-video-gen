@@ -1100,6 +1100,14 @@ textarea:focus {
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.2s ease;
+  user-select: none;
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
+}
+
+.mode-btn span {
+  pointer-events: none;
 }
 
 .mode-btn:hover {
