@@ -132,7 +132,7 @@ AUTO_GEN_VIDEO/
 ### 3.6. Milestone M4 — LLM trong code và duyệt kịch bản (nhánh `feat/m4-llm-script`)
 - **LLM Provider Interface & Implementations:**
   - Định nghĩa interface `LLMProvider` trong [`src/script/types.ts`](../src/script/types.ts).
-  - Triển khai `AnthropicProvider` (Claude 3.5 Haiku/Sonnet), `OpenAiProvider` (OpenAI hoặc tương thích OpenAI: Groq, DeepSeek, Ollama), và `FakeLLMProvider` phục vụ kiểm thử tự động không gọi mạng.
+  - Triển khai `GeminiProvider` (Google Gemini 2.0 Flash / 1.5 Flash via Google AI Studio API), `AnthropicProvider` (Claude 3.5 Haiku/Sonnet), `OpenAiProvider` (OpenAI hoặc tương thích OpenAI: Groq, DeepSeek, Ollama), và `FakeLLMProvider` phục vụ kiểm thử tự động không gọi mạng.
   - Factory `createLlmProvider` tự động chọn provider dựa trên biến môi trường (`LLM_PROVIDER`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_BASE_URL`).
   - Bảo mật tuyệt đối: Hàm `maskApiKey` và lớp provider không bao giờ in API key vào log.
 - **Trích xuất nội dung nguồn (`src/script/source-fetcher.ts`):**
@@ -242,7 +242,7 @@ AUTO_GEN_VIDEO/
   - ✅ **M1 (Captions & SRT):** Karaoke sync từng từ, HTML/CSS/GSAP caption layer, import/export SRT, 77 tests passed.
   - ✅ **M2 (Media thật):** Stock Pexels/Pixabay, screenshot URL, Ken Burns, manifest bản quyền `media.json`, 86 tests passed.
   - ✅ **M3 (Template review & Themes):** 6 template review mới (tổng 12 templates), dual-theme (dark-neon & light-pro), 106 tests passed.
-  - ✅ **M4 (LLM Script & Duyệt kịch bản):** Anthropic & OpenAI providers, kiểm tra số liệu so với nguồn, xuất `script.review.md`, 125 tests passed.
+  - ✅ **M4 (LLM Script & Duyệt kịch bản):** Gemini, Anthropic & OpenAI providers, kiểm tra số liệu so với nguồn, xuất `script.review.md`, 125 tests passed (hiện tại 156 tests).
   - ✅ **M5 (Audio polish, motion, preset):** BGM ducking với FFmpeg sidechain, từ điển phát âm Lexicon, chuyển cảnh transition (cut, fade, slide, zoom), safe-zone TikTok, 134 tests passed.
   - ✅ **M6 (Web UI & Timeline Editor):** Express server API, Headless Timeline model (Command Pattern, Undo/Redo, Snap, Ripple Delete), Live Preview 9:16 đồng bộ playhead, Re-TTS từng cảnh, 147 tests passed.
   - ✅ **M7 (RSS Ingest, Publish Kit, CI):** RSS collector, batch queue xử lý tuần tự, xuất `cover.png` & `publish.md`, GitHub Actions CI, 154 tests passed.
