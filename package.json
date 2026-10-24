@@ -10,6 +10,7 @@
   "scripts": {
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
+    "script": "tsx src/script/cli.ts",
     "pipeline": "tsx src/cli.ts",
     "web": "tsx src/server.ts",
     "serve": "tsx src/server.ts",

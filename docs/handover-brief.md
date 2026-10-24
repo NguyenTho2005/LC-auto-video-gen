@@ -2,7 +2,7 @@
 
 > **Dành cho AI Agent tiếp nhận dự án.**  
 > Ngày cập nhật: 24/10/2026.  
-> Trạng thái hiện tại: **Đã hoàn thành 100% Milestone M0 (Audit), M1 (Caption & SRT), M2 (Media thật), M3 (Template review & Themes)** trên nhánh `feat/m3-review-templates`.
+> Trạng thái hiện tại: **Đã hoàn thành 100% Milestone M0 (Audit), M1 (Caption & SRT), M2 (Media thật), M3 (Template review & Themes), M4 (LLM Script & Duyệt kịch bản)** trên nhánh `feat/m4-llm-script`.
 
 ---
 
@@ -129,45 +129,63 @@ AUTO_GEN_VIDEO/
   - Render video mẫu thực tế: `output/m3-sample/video.mp4` (149.1 MB, 40.4s, 1080×1920 30fps H.264, audio AAC stereo 48000Hz, ffprobe kiểm tra đạt chuẩn).
   - Trích xuất 6 frame ảnh chụp mẫu độ phân giải 1080×1920 tại `output/m3-sample/frames/`.
 
+### 3.6. Milestone M4 — LLM trong code và duyệt kịch bản (nhánh `feat/m4-llm-script`)
+- **LLM Provider Interface & Implementations:**
+  - Định nghĩa interface `LLMProvider` trong [`src/script/types.ts`](../src/script/types.ts).
+  - Triển khai `AnthropicProvider` (Claude 3.5 Haiku/Sonnet), `OpenAiProvider` (OpenAI hoặc tương thích OpenAI: Groq, DeepSeek, Ollama), và `FakeLLMProvider` phục vụ kiểm thử tự động không gọi mạng.
+  - Factory `createLlmProvider` tự động chọn provider dựa trên biến môi trường (`LLM_PROVIDER`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_BASE_URL`).
+  - Bảo mật tuyệt đối: Hàm `maskApiKey` và lớp provider không bao giờ in API key vào log.
+- **Trích xuất nội dung nguồn (`src/script/source-fetcher.ts`):**
+  - Hỗ trợ cả 3 nguồn đầu vào: URL bài báo web (tự bóc tách HTML, title, meta og:image, làm sạch text), file cục bộ (.txt, .md), hoặc chuỗi chủ đề trực tiếp.
+- **Prompt hệ thống tiếng Việt chuyên sâu (`src/script/prompts/`):**
+  - Ràng buộc cấu trúc 5-8 cảnh, hook 3s đầu, văn phong nói tự nhiên.
+  - Tự động phiên âm số/đơn vị đọc chuẩn cho TTS trong `voiceText` (vd "GPT 5.5" -> "GPT năm chấm năm", "82.7%" -> "tám mươi hai phẩy bảy phần trăm").
+  - Đa dạng hoá template phù hợp nội dung và lựa chọn preset (`news_short`, `review_60`, `top_list`).
+- **Kiểm tra và đối chiếu số liệu (`src/script/fact-checker.ts`):**
+  - Trích xuất toàn bộ số nguyên, số thập phân, đơn vị (MP, GB, Hz, mAh, đ) và cụm số phát âm từ `voiceText` và `templateData`.
+  - Đối chiếu chuẩn hoá với nội dung bài viết gốc, phát hiện chính xác các số bịa đặt (hallucinated numbers) mà không bị nhầm lẫn substring.
+- **Quy trình duyệt kịch bản & Lệnh CLI (`npm run script`):**
+  - Hỗ trợ cơ chế retry tự động tối đa 2 lần khi LLM trả JSON không hợp lệ, kèm feedback lỗi cụ thể.
+  - Tự động sinh `script.json`, `sources.json`, và `script.review.md`.
+  - Tự động dừng để người dùng duyệt kịch bản và cảnh báo số liệu trước khi render (hỗ trợ cờ `--yes` để bỏ qua khi chạy CI/automation).
+- **Kết quả nghiệm thu M4:**
+  - `npx tsc --noEmit`: 0 lỗi.
+  - `npm test`: 22 test files, **125/125 tests passed 100%** (thêm 19 tests cho LLM providers, fact checker, và generator pipeline).
+  - Chạy thử nghiệm CLI: `LLM_PROVIDER=fake npm run script` hoạt động chuẩn xác, sinh đầy đủ 3 file và hiển thị cảnh báo số liệu chuẩn xác.
+
 ---
 
 ## 4. Trạng thái hiện tại của dự án
 
-- **Nhánh Git hiện tại:** `feat/m3-review-templates`.
-- **Trạng thái mã nguồn:** 0 lỗi TypeScript, 106/106 tests Vitest passed.
-- **Tiêu chí chấp nhận M3:** Đạt 100%:
-  1. Thêm đủ 6 review template mới vào discriminated union, không đổi biến thể cũ.
-  2. Mỗi template render chuẩn xác với fixture ở cả hai theme dark-neon và light-pro.
-  3. Schema từ chối dữ liệu sai định dạng (số dòng spec > 6, pro/con > 4, ảnh > 3, điểm số ngoài thang đo) với thông báo lỗi rõ ràng.
-  4. Script cũ và template cũ giữ nguyên hành vi, không bị phá vỡ.
+- **Nhánh Git hiện tại:** `feat/m4-llm-script`.
+- **Trạng thái mã nguồn:** 0 lỗi TypeScript, 125/125 tests Vitest passed.
+- **Tiêu chí chấp nhận M4:** Đạt 100%:
+  1. Chạy `npm run script` với `FakeLLMProvider` sinh `script.json` hợp lệ đạt chuẩn `ScriptSchema`.
+  2. Cơ chế retry hoạt động ổn định khi LLM trả JSON sai cấu trúc.
+  3. Số bịa đặt không có trong bài viết gốc bị hệ thống phát hiện và gắn cờ cảnh báo trong `script.review.md`.
+  4. Tuyệt đối không có API key xuất hiện trong console hay log.
 
 ---
 
-## 5. Bước tiếp theo cần làm ngay (Immediate Next Step: Milestone M4)
+## 5. Bước tiếp theo cần làm ngay (Immediate Next Step: Milestone M5)
 
-Nhiệm vụ tiếp theo là **Milestone M4 (LLM trong code và duyệt kịch bản)** theo đúng prompt **P-M4** trong `PRD2.md` Mục B4:
+Nhiệm vụ tiếp theo là **Milestone M5 (Audio polish, motion, preset)** theo đúng prompt **P-M5** trong `PRD2.md` Mục B4:
 
 1. **Khởi tạo nhánh làm việc mới:**
    ```bash
-   git checkout -b feat/m4-llm-script
+   git checkout -b feat/m5-audio-motion
    ```
 2. **Kỹ năng bắt buộc phải đọc trước:**
-   - [`.agents/skills/llm-script/SKILL.md`](../.agents/skills/llm-script/SKILL.md)
+   - [`.agents/skills/audio-polish/SKILL.md`](../.agents/skills/audio-polish/SKILL.md)
+   - [`.agents/skills/hyperframes-templates/SKILL.md`](../.agents/skills/hyperframes-templates/SKILL.md)
    - [`.agents/skills/qa-verify/SKILL.md`](../.agents/skills/qa-verify/SKILL.md)
-3. **Các hạng mục cần làm ở M4:**
-   - Xây dựng `LLMProvider` interface với:
-     - `AnthropicProvider` (Claude 3.5 Sonnet / Haiku).
-     - `OpenAiProvider` (OpenAI hoặc tương thích OpenAI như Groq, DeepSeek).
-     - `FakeLLMProvider` cho kiểm thử tự động không gọi mạng.
-   - Viết lệnh CLI sinh kịch bản:
-     ```bash
-     npm run script -- <url|file.md|"chủ đề"> --preset <news_short|review_60|top_list> --out <thư mục>
-     ```
-   - Trích xuất nội dung nguồn từ URL web hoặc file.
-   - Prompt hệ thống tiếng Việt tối ưu trong `src/script/prompts/` (chỉ dùng thông tin trong nguồn, hook 3s đầu, văn nói, số tự chuyển sang dạng đọc).
-   - Kiểm tra và xác minh số liệu: So khớp mọi con số trong `voiceText`/`templateData` với văn bản nguồn, tự động gắn cờ cảnh báo số lạ trong `script.review.md`.
-   - Cơ chế duyệt kịch bản: `npm run script` dừng lại sau khi tạo `script.json` và `script.review.md` để người dùng kiểm duyệt trước khi chạy render pipeline (hỗ trợ cờ `--yes` để bỏ qua bước dừng khi chạy tự động).
+3. **Các hạng mục cần làm ở M5:**
+   - **BGM & Ducking:** Trường `bgm` (`src`, `volume`, `duck`) trong `script.json`. Tự động lặp/cắt theo độ dài video, fade in/out và tự động ducking (giảm âm lượng BGM khi có giọng nói qua FFmpeg `sidechaincompress`). Thư mục `assets/bgm/` kèm nhạc mẫu miễn phí bản quyền.
+   - **Từ điển phát âm (Lexicon):** File `config/lexicon.json` (ví dụ `"iPhone": "ai phôn"`), áp dụng tự động vào `voiceText` trước khi gọi TTS. Không thay đổi chữ hiển thị trên màn hình.
+   - **Chuyển cảnh (Transitions):** Trường `transition` mỗi cảnh (`cut` mặc định, `fade`, `slide`, `zoom`, kèm `duration`). Giữ mặc định `cut` để tương thích ngược.
+   - **Preset độ dài:** `short_30`, `news_45`, `review_60` (số cảnh, số từ mục tiêu, khoảng thời lượng cảnh báo).
+   - **TikTok Safe-zone & Branding:** Cấu hình lề an toàn TikTok cho caption/nội dung quan trọng; cấu hình branding trong `config/brand.json` (tên kênh, handle, avatar, màu, theme) thay cho giá trị tác giả gốc.
 4. **Quy trình nghiệm thu:**
-   - Chạy `npx tsc --noEmit` và `npm test` (test retry khi LLM trả JSON sai, test gắn cờ số bịa).
-   - Kiểm tra kịch bản sinh ra hợp lệ với `ScriptSchema`.
+   - Chạy `npx tsc --noEmit` và `npm test`.
+   - Render video mẫu có BGM và kiểm tra mức âm lượng bằng `ffprobe`/`ffmpeg`.
    - Cập nhật tiếp vào `docs/handover-brief.md`.

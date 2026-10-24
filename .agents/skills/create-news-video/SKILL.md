@@ -44,6 +44,12 @@ Single argument: a news article URL (starts with `http://` or `https://`) OR a p
 
 ### Step 4: Generate script.json
 
+> **M4 Automated Workflow Option**: You can now run the automated script generator CLI:
+> ```bash
+> npm run script -- <url|file.txt|"chủ đề"> --preset <news_short|review_60|top_list> --out <outputDir> --yes
+> ```
+> This automatically fetches sources, calls the configured LLM, validates with Zod, checks facts against source numbers, and generates `script.json` + `script.review.md`. You can also compose `script.json` directly as described below.
+
 Following the schema in `docs/superpowers/specs/2026-04-29-auto-news-video-design.md` Section 4. Key rules:
 
 **Script content (Vietnamese):**
