@@ -125,3 +125,4 @@ flowchart TD
   - **Video stream:** 1080×1920 (chuẩn 9:16), 30 fps, H.264, duration 30.20s.
   - **Audio stream:** AAC stereo, sample rate 48000 Hz, duration 30.19s.
   - Luồng hình và tiếng đồng bộ, hiển thị mượt mà.
+
