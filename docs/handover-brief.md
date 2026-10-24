@@ -236,16 +236,16 @@ AUTO_GEN_VIDEO/
 ## 4. Trạng thái hiện tại của dự án
 
 - **Nhánh Git hiện tại:** `feat/m7-ingest-ci`.
-- **Trạng thái mã nguồn:** 0 lỗi TypeScript strict mode, **154/154 tests Vitest passed 100%**.
+- **Trạng thái mã nguồn:** 0 lỗi TypeScript strict mode, **160/160 tests Vitest passed 100%** (27 test files).
 - **Tiêu chí chấp nhận PRD2:** **ĐÃ HOÀN THÀNH 100% TẤT CẢ 8 MILESTONE (M0 → M7)**:
   - ✅ **M0 (Audit & Baseline):** Làm rõ kiến trúc, giải quyết mâu thuẫn tài liệu, 60 tests passed.
   - ✅ **M1 (Captions & SRT):** Karaoke sync từng từ, HTML/CSS/GSAP caption layer, import/export SRT, 77 tests passed.
   - ✅ **M2 (Media thật):** Stock Pexels/Pixabay, screenshot URL, Ken Burns, manifest bản quyền `media.json`, 86 tests passed.
   - ✅ **M3 (Template review & Themes):** 6 template review mới (tổng 12 templates), dual-theme (dark-neon & light-pro), 106 tests passed.
-  - ✅ **M4 (LLM Script & Duyệt kịch bản):** Gemini, Anthropic & OpenAI providers, kiểm tra số liệu so với nguồn, xuất `script.review.md`, 125 tests passed (hiện tại 156 tests).
+  - ✅ **M4 (LLM Script & Duyệt kịch bản):** Gemini, Anthropic & OpenAI providers, kiểm tra số liệu so với nguồn, xuất `script.review.md`, **Giao diện Modal cấu hình LLM/API Key/Model/Base URL thời gian thực & Test Connection API**, 160 tests passed.
   - ✅ **M5 (Audio polish, motion, preset):** BGM ducking với FFmpeg sidechain, từ điển phát âm Lexicon, chuyển cảnh transition (cut, fade, slide, zoom), safe-zone TikTok, 134 tests passed.
-  - ✅ **M6 (Web UI & Timeline Editor):** Express server API, Headless Timeline model (Command Pattern, Undo/Redo, Snap, Ripple Delete), Live Preview 9:16 đồng bộ playhead, Re-TTS từng cảnh, 147 tests passed.
-  - ✅ **M7 (RSS Ingest, Publish Kit, CI):** RSS collector, batch queue xử lý tuần tự, xuất `cover.png` & `publish.md`, GitHub Actions CI, 154 tests passed.
+  - ✅ **M6 (Web UI & Timeline Editor):** Express server API, Headless Timeline model (Command Pattern, Undo/Redo, Snap, Ripple Delete), Live Preview 9:16 đồng bộ playhead, Re-TTS từng cảnh, nút Phóng To & Tải MP4 trực tiếp, 147 tests passed.
+  - ✅ **M7 (RSS Ingest, Publish Kit, CI):** RSS collector, batch queue xử lý tuần tự, xuất `cover.png` & `publish.md`, GitHub Actions CI, 160 tests passed.
 
 ---
 
