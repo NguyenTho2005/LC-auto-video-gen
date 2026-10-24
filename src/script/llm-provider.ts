@@ -117,6 +117,66 @@ export class OpenAiProvider implements LLMProvider {
   }
 }
 
+export class GeminiProvider implements LLMProvider {
+  readonly name = "gemini";
+  private apiKey: string;
+  private model: string;
+  private baseUrl: string;
+
+  constructor(opts?: { apiKey?: string; model?: string; baseUrl?: string }) {
+    this.apiKey = opts?.apiKey || process.env.GEMINI_API_KEY || process.env.LLM_API_KEY || "";
+    this.model = opts?.model || process.env.LLM_MODEL || "gemini-2.0-flash";
+    this.baseUrl = (
+      opts?.baseUrl ||
+      process.env.LLM_BASE_URL ||
+      "https://generativelanguage.googleapis.com/v1beta/openai"
+    ).replace(/\/$/, "");
+
+    if (!this.apiKey) {
+      log.warn("GeminiProvider initialized without API key (GEMINI_API_KEY or LLM_API_KEY)");
+    }
+  }
+
+  async generate(systemPrompt: string, userPrompt: string): Promise<string> {
+    try {
+      const url = this.baseUrl.endsWith("/chat/completions")
+        ? this.baseUrl
+        : `${this.baseUrl}/chat/completions`;
+      const response = await axios.post(
+        url,
+        {
+          model: this.model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.7,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+          },
+          timeout: 60000,
+        },
+      );
+
+      const content = response.data?.choices?.[0]?.message?.content;
+      if (typeof content !== "string") {
+        throw new Error("Invalid response format from Gemini API: missing message content");
+      }
+      return content;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        const msg = err.response?.data?.error?.message || err.message;
+        throw new Error(`Gemini API error (${status}): ${msg}`);
+      }
+      throw err;
+    }
+  }
+}
+
 export interface FakeLlmResponseConfig {
   /** Array of responses to return sequentially per call */
   responses?: string[];
@@ -213,7 +273,11 @@ export function createLlmProvider(opts?: {
   model?: string;
   baseUrl?: string;
 }): LLMProvider {
-  const provider = (opts?.provider || process.env.LLM_PROVIDER || "openai").toLowerCase().trim();
+  const provider = (
+    opts?.provider ||
+    process.env.LLM_PROVIDER ||
+    (process.env.GEMINI_API_KEY ? "gemini" : "openai")
+  ).toLowerCase().trim();
 
   if (provider === "fake") {
     return new FakeLLMProvider({ defaultResponse: DEFAULT_FAKE_SCRIPT });
@@ -221,6 +285,10 @@ export function createLlmProvider(opts?: {
 
   if (provider === "anthropic" || provider === "claude") {
     return new AnthropicProvider(opts);
+  }
+
+  if (provider === "gemini" || provider === "google") {
+    return new GeminiProvider(opts);
   }
 
   return new OpenAiProvider(opts);

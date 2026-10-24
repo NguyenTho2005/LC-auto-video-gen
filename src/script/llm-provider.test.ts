@@ -4,6 +4,7 @@ import {
   FakeLLMProvider,
   AnthropicProvider,
   OpenAiProvider,
+  GeminiProvider,
   createLlmProvider,
   maskApiKey,
 } from "./llm-provider.js";
@@ -115,6 +116,31 @@ describe("LLM Providers (M4)", () => {
     });
   });
 
+  describe("GeminiProvider", () => {
+    it("sends request to Google OpenAI-compatible endpoint and parses response", async () => {
+      nock("https://generativelanguage.googleapis.com/v1beta/openai")
+        .post("/chat/completions", (body) => {
+          return (
+            body.model === "gemini-2.0-flash" &&
+            body.messages[0].content === "sys prompt" &&
+            body.messages[1].content === "user prompt"
+          );
+        })
+        .matchHeader("Authorization", "Bearer test-gemini-key")
+        .reply(200, {
+          choices: [{ message: { content: '{"result": "gemini-ok"}' } }],
+        });
+
+      const provider = new GeminiProvider({
+        apiKey: "test-gemini-key",
+        model: "gemini-2.0-flash",
+      });
+
+      const res = await provider.generate("sys prompt", "user prompt");
+      expect(res).toBe('{"result": "gemini-ok"}');
+    });
+  });
+
   describe("createLlmProvider", () => {
     it("creates fake provider", () => {
       const p = createLlmProvider({ provider: "fake" });
@@ -124,6 +150,11 @@ describe("LLM Providers (M4)", () => {
     it("creates anthropic provider", () => {
       const p = createLlmProvider({ provider: "anthropic" });
       expect(p.name).toBe("anthropic");
+    });
+
+    it("creates gemini provider", () => {
+      const p = createLlmProvider({ provider: "gemini" });
+      expect(p.name).toBe("gemini");
     });
 
     it("creates openai provider by default", () => {

@@ -12,6 +12,7 @@ import { runPipeline } from "./pipeline.js";
 import { loadConfig } from "./config.js";
 import { toSlug } from "./utils/slug.js";
 import { generateScriptFromContent } from "./utils/script-generator.js";
+import { generateScript } from "./script/generator.js";
 import { addLogListener, log } from "./utils/logger.js";
 import { ScriptSchema, type Script } from "./render/script-schema.js";
 import {
@@ -232,20 +233,44 @@ app.post("/api/extract-url", async (req, res) => {
 // ── API: Generate Script ────────────────────────────────────────────────────
 app.post("/api/generate-script", async (req, res) => {
   try {
-    const { title, content, url, domain, image, channel, voiceProvider, voiceId, speed } = req.body;
+    const { title, content, url, domain, image, channel, voiceProvider, voiceId, speed, preset } = req.body;
     if (!title) return res.status(400).json({ error: "Tiêu đề không được để trống" });
 
-    const script = await generateScriptFromContent({
-      title,
-      content: content || title,
-      url,
-      domain,
-      image,
-      channel: channel || "Công Nghệ 24h",
-      voiceProvider,
-      voiceId,
-      speed,
-    });
+    const hasLlmKey = Boolean(
+      process.env.GEMINI_API_KEY ||
+      process.env.LLM_API_KEY ||
+      process.env.OPENAI_API_KEY ||
+      process.env.ANTHROPIC_API_KEY,
+    );
+
+    let script: Script | null = null;
+    if (hasLlmKey) {
+      try {
+        const llmPreset = preset === "review_60" ? "review_60" : "news_short";
+        const result = await generateScript({
+          input: url || `${title}\n\n${content}`,
+          preset: llmPreset,
+          channelName: channel || "Công Nghệ 24h",
+        });
+        script = result.script;
+      } catch (err: any) {
+        log.warn(`LLM script generation failed (${err.message}), falling back to offline generator`);
+      }
+    }
+
+    if (!script) {
+      script = await generateScriptFromContent({
+        title,
+        content: content || title,
+        url,
+        domain,
+        image,
+        channel: channel || "Công Nghệ 24h",
+        voiceProvider,
+        voiceId,
+        speed,
+      });
+    }
 
     res.json(script);
   } catch (err: any) {
@@ -260,19 +285,45 @@ app.post("/api/render", async (req, res) => {
 
     // If script not sent directly, generate from input
     if (!scriptData) {
-      const { title, content, url, domain, image, channel, voiceId, voiceProvider } = req.body;
+      const { title, content, url, domain, image, channel, voiceId, voiceProvider, preset } = req.body;
       if (!title) return res.status(400).json({ error: "Cần cung cấp title hoặc script" });
 
-      scriptData = await generateScriptFromContent({
-        title,
-        content: content || title,
-        url,
-        domain,
-        image,
-        channel,
-        voiceProvider,
-        voiceId,
-      });
+      const hasLlmKey = Boolean(
+        process.env.GEMINI_API_KEY ||
+        process.env.LLM_API_KEY ||
+        process.env.OPENAI_API_KEY ||
+        process.env.ANTHROPIC_API_KEY,
+      );
+
+      if (hasLlmKey) {
+        try {
+          const providerName =
+            process.env.LLM_PROVIDER || (process.env.GEMINI_API_KEY ? "gemini" : "openai");
+          log.info(`[Server] Generating script with LLM (${providerName})...`);
+          const llmPreset = preset === "review_60" ? "review_60" : "news_short";
+          const llmResult = await generateScript({
+            input: url || `${title}\n\n${content}`,
+            preset: llmPreset,
+            channelName: channel || "Công Nghệ 24h",
+          });
+          scriptData = llmResult.script;
+        } catch (llmErr: any) {
+          log.warn(`[Server] LLM generation failed (${llmErr.message}), falling back to offline generator...`);
+        }
+      }
+
+      if (!scriptData) {
+        scriptData = await generateScriptFromContent({
+          title,
+          content: content || title,
+          url,
+          domain,
+          image,
+          channel,
+          voiceProvider,
+          voiceId,
+        });
+      }
     }
 
     // Validate script schema
