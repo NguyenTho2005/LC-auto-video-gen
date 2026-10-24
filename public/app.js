@@ -647,6 +647,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnRenderFromTimeline = document.getElementById("btnRenderFromTimeline");
   const btnCancelRenderJob = document.getElementById("btnCancelRenderJob");
   const btnImportSrtModal = document.getElementById("btnImportSrtModal");
+  const btnFullscreenPreview = document.getElementById("btnFullscreenPreview");
+  const btnDownloadTimelineMp4 = document.getElementById("btnDownloadTimelineMp4");
 
   const iframePreview = document.getElementById("iframePreview");
   const videoPreviewFallback = document.getElementById("videoPreviewFallback");
@@ -843,34 +845,71 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function setupPreviewPlayer() {
     if (!currentProject) {
+      if (previewScreen) previewScreen.classList.remove("has-project");
       iframePreview.style.display = "none";
       videoPreviewFallback.style.display = "none";
       if (previewPlayOverlay) previewPlayOverlay.style.display = "none";
       if (previewSceneBadge) previewSceneBadge.style.display = "none";
+      if (btnDownloadTimelineMp4) btnDownloadTimelineMp4.style.display = "none";
       previewPlaceholder.style.display = "flex";
       previewPlaceholder.innerHTML = `<span>📱 Chưa chọn dự án để xem trước</span>`;
       return;
     }
 
-    previewPlaceholder.style.display = "none";
     if (currentProject.videoUrl) {
+      if (previewScreen) previewScreen.classList.add("has-project");
+      previewPlaceholder.style.display = "none";
+
       iframePreview.style.display = "none";
       videoPreviewFallback.style.display = "block";
-      videoPreviewFallback.src = currentProject.videoUrl;
-      videoPreviewFallback.currentTime = playheadTime || 0;
-      videoPreviewFallback.load();
+
+      if (btnDownloadTimelineMp4) {
+        btnDownloadTimelineMp4.style.display = "inline-flex";
+        btnDownloadTimelineMp4.href = `/api/videos/${currentProject.slug}/download`;
+        btnDownloadTimelineMp4.setAttribute("download", `${currentProject.slug}.mp4`);
+      }
+
+      const currentLoadedSrc = videoPreviewFallback.getAttribute("data-loaded-src");
+      const targetSrc = currentProject.videoUrl;
+      if (currentLoadedSrc !== targetSrc) {
+        videoPreviewFallback.setAttribute("data-loaded-src", targetSrc);
+        videoPreviewFallback.src = targetSrc;
+        videoPreviewFallback.load();
+      }
+
+      const targetTime = playheadTime || 0;
+      if (videoPreviewFallback.readyState >= 1) {
+        try {
+          const safeDur = videoPreviewFallback.duration;
+          videoPreviewFallback.currentTime = safeDur && !isNaN(safeDur) ? Math.min(targetTime, safeDur) : targetTime;
+        } catch {}
+      } else {
+        videoPreviewFallback.onloadedmetadata = () => {
+          try {
+            const safeDur = videoPreviewFallback.duration;
+            videoPreviewFallback.currentTime = safeDur && !isNaN(safeDur) ? Math.min(targetTime, safeDur) : targetTime;
+          } catch {}
+        };
+      }
+
       if (previewPlayOverlay) {
         previewPlayOverlay.style.display = "flex";
         previewPlayOverlay.classList.remove("hidden");
       }
       if (previewSceneBadge) previewSceneBadge.style.display = "block";
     } else if (currentProject.previewUrl) {
+      if (previewScreen) previewScreen.classList.add("has-project");
+      previewPlaceholder.style.display = "none";
+      if (btnDownloadTimelineMp4) btnDownloadTimelineMp4.style.display = "none";
+
       iframePreview.style.display = "block";
       videoPreviewFallback.style.display = "none";
       iframePreview.src = currentProject.previewUrl;
       if (previewPlayOverlay) previewPlayOverlay.style.display = "none";
       if (previewSceneBadge) previewSceneBadge.style.display = "none";
     } else {
+      if (previewScreen) previewScreen.classList.remove("has-project");
+      if (btnDownloadTimelineMp4) btnDownloadTimelineMp4.style.display = "none";
       iframePreview.style.display = "none";
       videoPreviewFallback.style.display = "none";
       if (previewPlayOverlay) previewPlayOverlay.style.display = "none";
@@ -1081,6 +1120,23 @@ document.addEventListener("DOMContentLoaded", () => {
   previewPlayOverlay?.addEventListener("click", togglePlayback);
   videoPreviewFallback?.addEventListener("click", togglePlayback);
 
+  // Fullscreen / Modal Preview Button
+  btnFullscreenPreview?.addEventListener("click", () => {
+    if (!currentProject) {
+      showToast("Chưa chọn dự án nào!");
+      return;
+    }
+    stopPlayback();
+    openPlayerModal({
+      slug: currentProject.slug,
+      title: currentProject.script?.metadata?.title || currentProject.slug,
+      videoUrl: currentProject.videoUrl,
+      audioUrl: currentProject.audioUrl,
+      caption: currentProject.script?.metadata?.title || "",
+      videoSizeMb: "90.9",
+    });
+  });
+
   // Sync video preview events
   videoPreviewFallback.addEventListener("timeupdate", () => {
     if (isPlaying && videoPreviewFallback.style.display !== "none") {
@@ -1097,8 +1153,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function seekPreview(time) {
     if (videoPreviewFallback.style.display !== "none" && videoPreviewFallback.src) {
-      const dur = videoPreviewFallback.duration || time;
-      videoPreviewFallback.currentTime = Math.min(time, dur);
+      try {
+        const safeDur = videoPreviewFallback.duration;
+        const target = safeDur && !isNaN(safeDur) ? Math.min(Math.max(0, time), safeDur) : Math.max(0, time);
+        videoPreviewFallback.currentTime = target;
+      } catch {}
     } else if (iframePreview.style.display !== "none" && iframePreview.contentWindow) {
       try {
         const win = iframePreview.contentWindow;

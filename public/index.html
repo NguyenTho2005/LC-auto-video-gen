@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=2.2">
 </head>
 <body>
   <!-- Header -->
@@ -410,6 +410,12 @@
         </div>
 
         <div class="topbar-right">
+          <button class="btn btn-sm btn-outline" id="btnFullscreenPreview" title="Xem video toàn màn hình / phóng to">
+            <span>📺</span> Phóng To
+          </button>
+          <a class="btn btn-sm btn-outline" id="btnDownloadTimelineMp4" title="Tải trực tiếp video MP4 về máy" style="display: none;" download>
+            <span>⬇️</span> Tải MP4
+          </a>
           <button class="btn btn-sm btn-outline" id="btnImportSrtModal" title="Nhập file phụ đề SRT bên ngoài (M1)">
             <span>📥</span> Nhập SRT
           </button>
@@ -435,7 +441,7 @@
                 <div class="preview-play-btn">▶</div>
               </div>
               <div class="preview-scene-badge" id="previewSceneBadge" style="display: none;">Cảnh 1</div>
-              <div class="preview-placeholder" id="previewPlaceholder">
+              <div class="preview-placeholder" id="previewPlaceholder" style="display: none;">
                 <span>📱 Chưa chọn dự án để xem trước</span>
               </div>
             </div>
@@ -793,6 +799,6 @@ Chào mừng các bạn đến với bản tin..."></textarea>
     <span class="toast-message" id="toastMessage">Thông báo</span>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2.2"></script>
 </body>
 </html>
