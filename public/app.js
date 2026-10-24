@@ -1778,7 +1778,338 @@ document.addEventListener("DOMContentLoaded", () => {
     return text.replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
   }
 
+  // ── Milestone M4: LLM Configuration & Model Settings ─────────────────────
+  const llmStatusBadge = document.getElementById("llmStatusBadge");
+  const llmStatusDot = document.getElementById("llmStatusDot");
+  const llmStatusText = document.getElementById("llmStatusText");
+  const btnOpenLlmModal = document.getElementById("btnOpenLlmModal");
+  const llmModal = document.getElementById("llmModal");
+  const btnCloseLlmModal = document.getElementById("btnCloseLlmModal");
+  const btnCancelLlmModal = document.getElementById("btnCancelLlmModal");
+  const btnSaveLlmConfig = document.getElementById("btnSaveLlmConfig");
+  const btnTestLlmConnection = document.getElementById("btnTestLlmConnection");
+
+  const inputLlmApiKey = document.getElementById("inputLlmApiKey");
+  const btnToggleApiKeyEye = document.getElementById("btnToggleApiKeyEye");
+  const llmKeyStatusBadge = document.getElementById("llmKeyStatusBadge");
+  const llmGetApiKeyLink = document.getElementById("llmGetApiKeyLink");
+  const llmApiKeyNote = document.getElementById("llmApiKeyNote");
+
+  const selectLlmModelPreset = document.getElementById("selectLlmModelPreset");
+  const inputLlmModelCustom = document.getElementById("inputLlmModelCustom");
+  const groupLlmBaseUrl = document.getElementById("groupLlmBaseUrl");
+  const inputLlmBaseUrl = document.getElementById("inputLlmBaseUrl");
+  const groupLlmApiKey = document.getElementById("groupLlmApiKey");
+  const rowLlmModel = document.getElementById("rowLlmModel");
+  const llmTestResultAlert = document.getElementById("llmTestResultAlert");
+
+  const llmBannerModelUrl = document.getElementById("llmBannerModelUrl");
+  const llmBannerModelText = document.getElementById("llmBannerModelText");
+
+  let currentLlmConfig = {
+    provider: "gemini",
+    model: "gemini-2.0-flash",
+    baseUrl: "",
+    hasApiKey: false,
+    maskedApiKey: "",
+    status: "ready",
+  };
+
+  const MODEL_PRESETS = {
+    gemini: [
+      { id: "gemini-2.0-flash", label: "gemini-2.0-flash (Mặc định · Cực nhanh & Chuẩn)", isDefault: true },
+      { id: "gemini-1.5-flash", label: "gemini-1.5-flash (Ổn định)" },
+      { id: "gemini-1.5-pro", label: "gemini-1.5-pro (Mô hình lớn chuyên sâu)" },
+    ],
+    openai: [
+      { id: "gpt-4o-mini", label: "gpt-4o-mini (Nhanh & Tiết kiệm)", isDefault: true },
+      { id: "gpt-4o", label: "gpt-4o (Thông minh toàn diện)" },
+      { id: "gpt-4-turbo", label: "gpt-4-turbo" },
+    ],
+    custom: [
+      { id: "llama-3.3-70b-versatile", label: "llama-3.3-70b-versatile (Groq)", isDefault: true },
+      { id: "deepseek-chat", label: "deepseek-chat (DeepSeek V3)" },
+      { id: "custom", label: "-- Tự gõ Model ID khác --" },
+    ],
+    anthropic: [
+      { id: "claude-3-5-haiku-20241022", label: "claude-3-5-haiku-20241022 (Siêu nhanh)", isDefault: true },
+      { id: "claude-3-5-sonnet-20241022", label: "claude-3-5-sonnet-20241022 (Văn phong cao cấp)" },
+    ],
+    offline: [],
+  };
+
+  const API_KEY_GUIDES = {
+    gemini: {
+      label: "👉 Lấy Google Gemini API Key miễn phí",
+      url: "https://aistudio.google.com/app/apikey",
+    },
+    openai: {
+      label: "👉 Lấy OpenAI API Key",
+      url: "https://platform.openai.com/api-keys",
+    },
+    custom: {
+      label: "👉 Lấy Groq API Key miễn phí",
+      url: "https://console.groq.com/keys",
+    },
+    anthropic: {
+      label: "👉 Lấy Anthropic API Key",
+      url: "https://console.anthropic.com/settings/keys",
+    },
+    offline: {
+      label: "",
+      url: "#",
+    },
+  };
+
+  async function fetchLlmConfig() {
+    try {
+      const res = await fetch("/api/llm/config");
+      if (!res.ok) return;
+      currentLlmConfig = await res.json();
+      updateLlmUiDisplays();
+    } catch (err) {
+      console.error("Lỗi tải LLM config:", err);
+    }
+  }
+
+  function updateLlmUiDisplays() {
+    const { provider, model, hasApiKey } = currentLlmConfig;
+    const providerCapital = provider === "gemini" ? "Gemini" : provider === "openai" ? "OpenAI" : provider === "anthropic" ? "Claude" : provider === "offline" ? "Offline" : "Custom AI";
+
+    // Header badge
+    if (provider === "offline") {
+      llmStatusDot.className = "status-dot orange";
+      llmStatusText.textContent = "🤖 Offline Mode";
+    } else if (hasApiKey) {
+      llmStatusDot.className = "status-dot green";
+      llmStatusText.textContent = `🤖 ${providerCapital}: ${model}`;
+    } else {
+      llmStatusDot.className = "status-dot red";
+      llmStatusText.textContent = `🤖 ${providerCapital} (Thiếu Key)`;
+    }
+
+    // Form Banners
+    const bannerText = provider === "offline" ? "Chế độ Offline (Quy tắc cục bộ · Không gọi API ngoài)" : `${providerCapital} · ${model}`;
+    if (llmBannerModelUrl) llmBannerModelUrl.textContent = bannerText;
+    if (llmBannerModelText) llmBannerModelText.textContent = bannerText;
+  }
+
+  function openLlmModal() {
+    llmTestResultAlert.style.display = "none";
+    inputLlmApiKey.type = "password";
+    btnToggleApiKeyEye.textContent = "👁️";
+
+    // Select provider radio
+    const activeRadio = document.querySelector(`input[name="llmProviderRadio"][value="${currentLlmConfig.provider}"]`);
+    if (activeRadio) {
+      activeRadio.checked = true;
+      syncProviderCards(currentLlmConfig.provider);
+    }
+
+    // Sync API key input
+    if (currentLlmConfig.hasApiKey) {
+      inputLlmApiKey.value = "";
+      inputLlmApiKey.placeholder = `Đã lưu: ${currentLlmConfig.maskedApiKey} (để trống nếu không đổi)`;
+      llmKeyStatusBadge.className = "key-status-badge has-key";
+      llmKeyStatusBadge.textContent = "✓ Đã có Key";
+      llmApiKeyNote.textContent = "Đã lưu khóa API an toàn. Nhập key mới vào đây nếu muốn thay đổi.";
+    } else {
+      inputLlmApiKey.value = "";
+      inputLlmApiKey.placeholder = "Dán API Key vào đây...";
+      llmKeyStatusBadge.className = "key-status-badge no-key";
+      llmKeyStatusBadge.textContent = "Chưa có Key";
+      llmApiKeyNote.textContent = "Chưa có API key. Hãy dán key của bạn vào đây.";
+    }
+
+    // Sync Model & Base URL
+    inputLlmModelCustom.value = currentLlmConfig.model || "gemini-2.0-flash";
+    inputLlmBaseUrl.value = currentLlmConfig.baseUrl || "";
+
+    syncModelPresetsDropdown(currentLlmConfig.provider, currentLlmConfig.model);
+
+    llmModal.style.display = "flex";
+  }
+
+  function closeLlmModal() {
+    llmModal.style.display = "none";
+  }
+
+  function syncProviderCards(provider) {
+    document.querySelectorAll(".provider-radio-card").forEach((card) => {
+      card.classList.toggle("active", card.dataset.provider === provider);
+    });
+
+    // Update help link
+    const guide = API_KEY_GUIDES[provider] || API_KEY_GUIDES.gemini;
+    if (guide.label) {
+      llmGetApiKeyLink.style.display = "inline";
+      llmGetApiKeyLink.textContent = guide.label;
+      llmGetApiKeyLink.href = guide.url;
+    } else {
+      llmGetApiKeyLink.style.display = "none";
+    }
+
+    // Show/hide fields for offline or custom
+    if (provider === "offline") {
+      groupLlmApiKey.style.display = "none";
+      rowLlmModel.style.display = "none";
+      groupLlmBaseUrl.style.display = "none";
+    } else {
+      groupLlmApiKey.style.display = "block";
+      rowLlmModel.style.display = "flex";
+      groupLlmBaseUrl.style.display = provider === "custom" ? "block" : "none";
+    }
+  }
+
+  function syncModelPresetsDropdown(provider, activeModel) {
+    selectLlmModelPreset.innerHTML = "";
+    const presets = MODEL_PRESETS[provider] || [];
+
+    presets.forEach((p) => {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.label;
+      selectLlmModelPreset.appendChild(opt);
+    });
+
+    const optCustom = document.createElement("option");
+    optCustom.value = "custom";
+    optCustom.textContent = "-- Tự nhập Model ID khác --";
+    selectLlmModelPreset.appendChild(optCustom);
+
+    const matchPreset = presets.find((p) => p.id === activeModel);
+    if (matchPreset) {
+      selectLlmModelPreset.value = matchPreset.id;
+    } else {
+      selectLlmModelPreset.value = "custom";
+    }
+  }
+
+  // Radio provider change event
+  document.querySelectorAll('input[name="llmProviderRadio"]').forEach((radio) => {
+    radio.addEventListener("change", (e) => {
+      const prov = e.target.value;
+      syncProviderCards(prov);
+      const presets = MODEL_PRESETS[prov] || [];
+      const defaultModel = presets[0]?.id || "gemini-2.0-flash";
+      inputLlmModelCustom.value = defaultModel;
+      syncModelPresetsDropdown(prov, defaultModel);
+    });
+  });
+
+  // Preset dropdown change event
+  selectLlmModelPreset.addEventListener("change", (e) => {
+    if (e.target.value === "custom") {
+      inputLlmModelCustom.focus();
+    } else {
+      inputLlmModelCustom.value = e.target.value;
+    }
+  });
+
+  // Eye toggle for API Key
+  btnToggleApiKeyEye.addEventListener("click", () => {
+    if (inputLlmApiKey.type === "password") {
+      inputLlmApiKey.type = "text";
+      btnToggleApiKeyEye.textContent = "🔒";
+    } else {
+      inputLlmApiKey.type = "password";
+      btnToggleApiKeyEye.textContent = "👁️";
+    }
+  });
+
+  // Test Connection Event
+  btnTestLlmConnection.addEventListener("click", async () => {
+    const selectedProvider = document.querySelector('input[name="llmProviderRadio"]:checked')?.value || "gemini";
+    const apiKeyVal = inputLlmApiKey.value.trim();
+    const modelVal = inputLlmModelCustom.value.trim();
+    const baseUrlVal = inputLlmBaseUrl.value.trim();
+
+    llmTestResultAlert.className = "llm-test-alert testing";
+    llmTestResultAlert.style.display = "block";
+    llmTestResultAlert.textContent = "⏳ Đang kết nối thử nghiệm đến máy chủ LLM...";
+    btnTestLlmConnection.disabled = true;
+
+    try {
+      const res = await fetch("/api/llm/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: selectedProvider,
+          apiKey: apiKeyVal,
+          model: modelVal,
+          baseUrl: baseUrlVal,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Kết nối thất bại");
+      }
+
+      llmTestResultAlert.className = "llm-test-alert success";
+      llmTestResultAlert.innerHTML = `<b>✅ Thành công!</b> ${escapeHtml(data.message)}`;
+    } catch (err) {
+      llmTestResultAlert.className = "llm-test-alert error";
+      llmTestResultAlert.innerHTML = `<b>❌ Thất bại:</b> ${escapeHtml(err.message)}`;
+    } finally {
+      btnTestLlmConnection.disabled = false;
+    }
+  });
+
+  // Save Config Event
+  btnSaveLlmConfig.addEventListener("click", async () => {
+    const selectedProvider = document.querySelector('input[name="llmProviderRadio"]:checked')?.value || "gemini";
+    const apiKeyVal = inputLlmApiKey.value.trim();
+    const modelVal = inputLlmModelCustom.value.trim();
+    const baseUrlVal = inputLlmBaseUrl.value.trim();
+
+    btnSaveLlmConfig.disabled = true;
+    btnSaveLlmConfig.textContent = "Đang lưu...";
+
+    try {
+      const res = await fetch("/api/llm/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: selectedProvider,
+          apiKey: apiKeyVal,
+          model: modelVal,
+          baseUrl: baseUrlVal,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Lỗi lưu cấu hình");
+
+      currentLlmConfig = data;
+      updateLlmUiDisplays();
+      showToast(`Đã lưu cấu hình LLM: ${selectedProvider} (${modelVal})!`);
+      closeLlmModal();
+    } catch (err) {
+      console.error(err);
+      showToast(`Lỗi: ${err.message}`);
+    } finally {
+      btnSaveLlmConfig.disabled = false;
+      btnSaveLlmConfig.innerHTML = `<span>💾</span><span>Lưu Cấu Hình</span>`;
+    }
+  });
+
+  // Open / Close events
+  btnOpenLlmModal?.addEventListener("click", openLlmModal);
+  llmStatusBadge?.addEventListener("click", openLlmModal);
+  btnCloseLlmModal?.addEventListener("click", closeLlmModal);
+  btnCancelLlmModal?.addEventListener("click", closeLlmModal);
+  llmModal?.addEventListener("click", (e) => {
+    if (e.target === llmModal) closeLlmModal();
+  });
+
+  // Inline triggers on form banners
+  document.querySelectorAll(".btn-trigger-llm-settings").forEach((btn) => {
+    btn.addEventListener("click", openLlmModal);
+  });
+
   // Initial Fetch
   fetchVideoList();
   loadProjectsList();
+  fetchLlmConfig();
 });

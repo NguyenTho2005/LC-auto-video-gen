@@ -3,6 +3,7 @@ dist/
 output/
 .env.local
 .env
+config/llm.json
 *.log
 .DS_Store
 # One-off debug scripts

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=2.2">
+  <link rel="stylesheet" href="styles.css?v=2.3">
 </head>
 <body>
   <!-- Header -->
@@ -52,6 +52,13 @@
           <span class="status-dot green"></span>
           <span class="status-text">Edge TTS (0đ)</span>
         </div>
+        <div class="status-pill llm-badge" id="llmStatusBadge" title="Bấm để Cấu Hình Nhà Cung Cấp LLM & API Key (Gemini, OpenAI, Claude...)">
+          <span class="status-dot green" id="llmStatusDot"></span>
+          <span class="status-text" id="llmStatusText">🤖 Gemini (Sẵn sàng)</span>
+        </div>
+        <button class="btn btn-sm btn-outline btn-glow-subtle" id="btnOpenLlmModal" title="Cấu hình mô hình AI & API Key">
+          <span>⚙️ Cấu Hình LLM</span>
+        </button>
       </div>
     </div>
   </header>
@@ -128,6 +135,20 @@
               </div>
             </div>
 
+            <!-- LLM Model Indicator Banner -->
+            <div class="llm-quick-banner">
+              <div class="llm-banner-left">
+                <span class="llm-banner-icon">🤖</span>
+                <div class="llm-banner-info">
+                  <div class="llm-banner-title">Mô hình AI kịch bản (M4 LLM):</div>
+                  <div class="llm-banner-model" id="llmBannerModelUrl">Google Gemini · gemini-2.0-flash</div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-xs btn-outline btn-trigger-llm-settings">
+                <span>⚙️ Đổi Model / API Key</span>
+              </button>
+            </div>
+
             <!-- Advanced Video Config (M1-M5) -->
             <div class="advanced-studio-box">
               <div class="advanced-title">⚙️ Cấu Hình Nâng Cao (M1–M5)</div>
@@ -168,6 +189,20 @@
               </div>
             </div>
 
+            <!-- LLM Model Indicator Banner -->
+            <div class="llm-quick-banner">
+              <div class="llm-banner-left">
+                <span class="llm-banner-icon">🤖</span>
+                <div class="llm-banner-info">
+                  <div class="llm-banner-title">Mô hình AI kịch bản (M4 LLM):</div>
+                  <div class="llm-banner-model" id="llmBannerModelText">Google Gemini · gemini-2.0-flash</div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-xs btn-outline btn-trigger-llm-settings">
+                <span>⚙️ Đổi Model / API Key</span>
+              </button>
+            </div>
+
             <div class="form-actions">
               <button type="button" class="btn btn-primary btn-glow btn-large" id="btnSubmitUrl">
                 <span class="icon">⚡</span>
@@ -202,6 +237,20 @@
                 <label for="inputChannelText">Tên kênh hiển thị</label>
                 <input type="text" id="inputChannelText" value="Tin Tức AI 24h">
               </div>
+            </div>
+
+            <!-- LLM Model Indicator Banner -->
+            <div class="llm-quick-banner">
+              <div class="llm-banner-left">
+                <span class="llm-banner-icon">🤖</span>
+                <div class="llm-banner-info">
+                  <div class="llm-banner-title">Mô hình AI kịch bản (M4 LLM):</div>
+                  <div class="llm-banner-model" id="llmBannerModelText">Google Gemini · gemini-2.0-flash</div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-xs btn-outline btn-trigger-llm-settings">
+                <span>⚙️ Đổi Model / API Key</span>
+              </button>
             </div>
 
             <div class="form-actions">
@@ -794,11 +843,135 @@ Chào mừng các bạn đến với bản tin..."></textarea>
     </div>
   </div>
 
+  <!-- LLM Settings Modal (M4) -->
+  <div class="modal-overlay" id="llmModal" style="display: none;">
+    <div class="modal-content glass-card" style="max-width: 680px; width: 95%;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <span style="font-size: 1.4rem;">🤖</span>
+          <h3 class="modal-title">Cấu Hình Mô Hình AI (LLM Provider & Model)</h3>
+        </div>
+        <button class="btn-close" id="btnCloseLlmModal">✕</button>
+      </div>
+      
+      <div style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; max-height: 75vh; overflow-y: auto;">
+        <p style="margin: 0; color: var(--text-secondary); font-size: 0.88rem; line-height: 1.5;">
+          Chọn mô hình AI để tự động phân tích bài viết, sinh kịch bản TikTok 9:16 chuẩn viral với đầy đủ các cảnh Hook, Số liệu nổi bật, Danh sách tính năng và Kêu gọi hành động (Outro).
+        </p>
+
+        <!-- 1. Provider Select Grid -->
+        <div class="form-group" style="margin: 0;">
+          <label style="font-weight: 700; color: #fff; margin-bottom: 0.5rem; display: block;">1. Chọn Nhà Cung Cấp (Provider)</label>
+          <div class="llm-provider-grid">
+            <label class="provider-radio-card active" data-provider="gemini">
+              <input type="radio" name="llmProviderRadio" value="gemini" checked>
+              <div class="provider-card-inner">
+                <span class="provider-badge-free">Khuyên Dùng</span>
+                <div class="provider-icon">🌟</div>
+                <div class="provider-name">Google Gemini</div>
+                <div class="provider-desc">Miễn phí hạn mức cao, cực nhanh, tiếng Việt mượt mà</div>
+              </div>
+            </label>
+            
+            <label class="provider-radio-card" data-provider="openai">
+              <input type="radio" name="llmProviderRadio" value="openai">
+              <div class="provider-card-inner">
+                <div class="provider-icon">🚀</div>
+                <div class="provider-name">OpenAI</div>
+                <div class="provider-desc">GPT-4o, GPT-4o-mini sắc sảo và thông minh</div>
+              </div>
+            </label>
+
+            <label class="provider-radio-card" data-provider="custom">
+              <input type="radio" name="llmProviderRadio" value="custom">
+              <div class="provider-card-inner">
+                <div class="provider-icon">⚡</div>
+                <div class="provider-name">Groq / DeepSeek</div>
+                <div class="provider-desc">Tương thích OpenAI API hoặc local Ollama</div>
+              </div>
+            </label>
+
+            <label class="provider-radio-card" data-provider="anthropic">
+              <input type="radio" name="llmProviderRadio" value="anthropic">
+              <div class="provider-card-inner">
+                <div class="provider-icon">🧠</div>
+                <div class="provider-name">Anthropic Claude</div>
+                <div class="provider-desc">Claude 3.5 Sonnet / Haiku hành văn mượt mà</div>
+              </div>
+            </label>
+
+            <label class="provider-radio-card" data-provider="offline">
+              <input type="radio" name="llmProviderRadio" value="offline">
+              <div class="provider-card-inner">
+                <div class="provider-icon">🛠️</div>
+                <div class="provider-name">Offline Mode</div>
+                <div class="provider-desc">Thuật toán bóc tách cục bộ không cần API Key</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- 2. API Key Input -->
+        <div class="form-group" id="groupLlmApiKey" style="margin: 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+            <label for="inputLlmApiKey" style="font-weight: 700; color: #fff; margin: 0;">2. Nhập API Key</label>
+            <span id="llmKeyStatusBadge" class="key-status-badge">Đang quét...</span>
+          </div>
+          <div class="input-with-button">
+            <input type="password" id="inputLlmApiKey" placeholder="Dán API Key vào đây (ví dụ: AIzaSy...)" autocomplete="off" style="font-family: var(--font-mono);">
+            <button type="button" class="btn btn-outline" id="btnToggleApiKeyEye" title="Ẩn / Hiện API Key" style="min-width: 44px; padding: 0 0.75rem;">👁️</button>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.35rem; font-size: 0.78rem;">
+            <span style="color: var(--text-secondary);" id="llmApiKeyNote">Nhập key mới hoặc để trống để giữ nguyên key hiện tại.</span>
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" id="llmGetApiKeyLink" style="color: var(--accent-cyan); text-decoration: underline;">👉 Lấy Gemini API Key miễn phí</a>
+          </div>
+        </div>
+
+        <!-- 3. Model Select & Custom Input -->
+        <div class="form-row" id="rowLlmModel" style="margin: 0;">
+          <div class="form-group col-6" style="margin: 0;">
+            <label for="selectLlmModelPreset" style="font-weight: 700; color: #fff;">3. Chọn Model gợi ý</label>
+            <select id="selectLlmModelPreset">
+              <option value="gemini-2.0-flash">gemini-2.0-flash (Mặc định · Cực nhanh)</option>
+              <option value="gemini-1.5-flash">gemini-1.5-flash (Ổn định)</option>
+              <option value="gemini-1.5-pro">gemini-1.5-pro (Mô hình lớn)</option>
+              <option value="custom">-- Nhập Model tùy chỉnh... --</option>
+            </select>
+          </div>
+          <div class="form-group col-6" style="margin: 0;">
+            <label for="inputLlmModelCustom" style="font-weight: 700; color: #fff;">Tên Model cụ thể</label>
+            <input type="text" id="inputLlmModelCustom" value="gemini-2.0-flash" placeholder="Ví dụ: gemini-2.0-flash" style="font-family: var(--font-mono);">
+          </div>
+        </div>
+
+        <!-- 4. Base URL (Hidden by default, shown for custom) -->
+        <div class="form-group" id="groupLlmBaseUrl" style="display: none; margin: 0;">
+          <label for="inputLlmBaseUrl" style="font-weight: 700; color: #fff;">Base URL (Dành cho Groq, DeepSeek, Local Ollama)</label>
+          <input type="text" id="inputLlmBaseUrl" placeholder="https://api.groq.com/openai/v1 hoặc http://localhost:11434/v1" style="font-family: var(--font-mono);">
+        </div>
+
+        <!-- 5. Test Alert Box -->
+        <div class="llm-test-alert" id="llmTestResultAlert" style="display: none;"></div>
+      </div>
+
+      <div class="modal-footer" style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.75rem;">
+        <button type="button" class="btn btn-outline" id="btnTestLlmConnection">
+          <span>🧪 Kiểm Tra Kết Nối (Test API)</span>
+        </button>
+        <div style="flex: 1;"></div>
+        <button type="button" class="btn btn-secondary" id="btnCancelLlmModal">Đóng</button>
+        <button type="button" class="btn btn-primary btn-glow" id="btnSaveLlmConfig">
+          <span>💾 Lưu Cấu Hình</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification -->
   <div class="toast-notification" id="toastNotification">
     <span class="toast-message" id="toastMessage">Thông báo</span>
   </div>
 
-  <script src="app.js?v=2.2"></script>
+  <script src="app.js?v=2.3"></script>
 </body>
 </html>

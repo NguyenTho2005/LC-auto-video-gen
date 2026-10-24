@@ -13,6 +13,8 @@ import { loadConfig } from "./config.js";
 import { toSlug } from "./utils/slug.js";
 import { generateScriptFromContent } from "./utils/script-generator.js";
 import { generateScript } from "./script/generator.js";
+import { createLlmProvider } from "./script/llm-provider.js";
+import type { LLMProvider } from "./script/types.js";
 import { addLogListener, log } from "./utils/logger.js";
 import { ScriptSchema, type Script } from "./render/script-schema.js";
 import {
@@ -33,7 +35,7 @@ const PROJECT_ROOT = join(__dirname, "..");
 const PUBLIC_DIR = join(PROJECT_ROOT, "public");
 const OUTPUT_DIR = join(PROJECT_ROOT, "output");
 
-const app = express();
+export const app = express();
 app.use(express.json({ limit: "10mb" }));
 app.use(
   express.static(PUBLIC_DIR, {
@@ -117,6 +119,195 @@ app.get("/api/config", (req, res) => {
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── LLM Configuration Helper (M4) ───────────────────────────────────────────
+interface StoredLlmConfig {
+  provider: string; // "gemini" | "openai" | "anthropic" | "custom" | "offline"
+  model: string;
+  apiKey?: string;
+  baseUrl?: string;
+}
+
+const LLM_CONFIG_FILE = join(PROJECT_ROOT, "config", "llm.json");
+
+async function loadLlmConfig(): Promise<StoredLlmConfig> {
+  if (existsSync(LLM_CONFIG_FILE)) {
+    try {
+      const data = JSON.parse(await readFile(LLM_CONFIG_FILE, "utf-8"));
+      return {
+        provider: data.provider || "gemini",
+        model: data.model || "gemini-2.0-flash",
+        apiKey: data.apiKey || "",
+        baseUrl: data.baseUrl || "",
+      };
+    } catch {}
+  }
+  return {
+    provider: process.env.LLM_PROVIDER || (process.env.GEMINI_API_KEY ? "gemini" : (process.env.OPENAI_API_KEY ? "openai" : "gemini")),
+    model: process.env.LLM_MODEL || (process.env.OPENAI_API_KEY ? "gpt-4o-mini" : "gemini-2.0-flash"),
+    apiKey: process.env.GEMINI_API_KEY || process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || "",
+    baseUrl: process.env.LLM_BASE_URL || "",
+  };
+}
+
+function getMaskedKey(key?: string): string {
+  if (!key) return "";
+  if (key.length <= 8) return "••••••••";
+  return `${key.slice(0, 4)}••••${key.slice(-4)}`;
+}
+
+async function getEffectiveLlmProvider(): Promise<{
+  provider: LLMProvider | null;
+  info: { provider: string; model: string };
+}> {
+  const cfg = await loadLlmConfig();
+  if (cfg.provider === "offline" || !cfg.apiKey) {
+    return { provider: null, info: { provider: cfg.provider, model: cfg.model } };
+  }
+  try {
+    const llm = createLlmProvider({
+      provider: cfg.provider,
+      apiKey: cfg.apiKey,
+      model: cfg.model,
+      baseUrl: cfg.baseUrl,
+    });
+    return { provider: llm, info: { provider: cfg.provider, model: cfg.model } };
+  } catch (err: any) {
+    log.warn(`[Server] Không thể khởi tạo LLM Provider ${cfg.provider}: ${err.message}`);
+    return { provider: null, info: { provider: cfg.provider, model: cfg.model } };
+  }
+}
+
+// ── API: LLM Settings (GET/POST/TEST) ────────────────────────────────────────
+app.get("/api/llm/config", async (_req, res) => {
+  try {
+    const cfg = await loadLlmConfig();
+    const hasKey = Boolean(cfg.apiKey && cfg.apiKey.trim().length > 0);
+    res.json({
+      provider: cfg.provider,
+      model: cfg.model,
+      baseUrl: cfg.baseUrl || "",
+      hasApiKey: hasKey,
+      maskedApiKey: getMaskedKey(cfg.apiKey),
+      status: cfg.provider === "offline" ? "offline" : (hasKey ? "ready" : "no_key"),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/llm/config", async (req, res) => {
+  try {
+    const { provider, apiKey, model, baseUrl } = req.body;
+    const current = await loadLlmConfig();
+
+    let newApiKey = current.apiKey;
+    if (apiKey !== undefined && apiKey !== null) {
+      const trimmed = apiKey.trim();
+      if (trimmed && !trimmed.includes("••••") && !trimmed.includes("...")) {
+        newApiKey = trimmed;
+      } else if (trimmed === "") {
+        newApiKey = "";
+      }
+    }
+
+    const updated: StoredLlmConfig = {
+      provider: provider || current.provider || "gemini",
+      model: model || current.model || "gemini-2.0-flash",
+      apiKey: newApiKey,
+      baseUrl: baseUrl !== undefined ? baseUrl.trim() : current.baseUrl,
+    };
+
+    // Ensure config directory exists
+    const configDir = join(PROJECT_ROOT, "config");
+    await mkdir(configDir, { recursive: true });
+    await writeFile(LLM_CONFIG_FILE, JSON.stringify(updated, null, 2), "utf-8");
+
+    // Sync to active process env
+    process.env.LLM_PROVIDER = updated.provider;
+    process.env.LLM_MODEL = updated.model;
+    if (updated.apiKey) {
+      process.env.LLM_API_KEY = updated.apiKey;
+      if (updated.provider === "gemini") process.env.GEMINI_API_KEY = updated.apiKey;
+      if (updated.provider === "openai") process.env.OPENAI_API_KEY = updated.apiKey;
+      if (updated.provider === "anthropic") process.env.ANTHROPIC_API_KEY = updated.apiKey;
+    }
+    if (updated.baseUrl) process.env.LLM_BASE_URL = updated.baseUrl;
+
+    res.json({
+      success: true,
+      provider: updated.provider,
+      model: updated.model,
+      baseUrl: updated.baseUrl || "",
+      hasApiKey: Boolean(updated.apiKey),
+      maskedApiKey: getMaskedKey(updated.apiKey),
+      status: updated.provider === "offline" ? "offline" : (updated.apiKey ? "ready" : "no_key"),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/llm/test", async (req, res) => {
+  try {
+    const { provider, apiKey, model, baseUrl } = req.body;
+    const current = await loadLlmConfig();
+
+    let testApiKey = current.apiKey;
+    if (apiKey && typeof apiKey === "string") {
+      const trimmed = apiKey.trim();
+      if (trimmed && !trimmed.includes("••••") && !trimmed.includes("...")) {
+        testApiKey = trimmed;
+      }
+    }
+
+    const targetProvider = provider || current.provider || "gemini";
+    const targetModel = model || current.model || "gemini-2.0-flash";
+    const targetBaseUrl = baseUrl !== undefined ? baseUrl : current.baseUrl;
+
+    if (targetProvider === "offline") {
+      return res.json({
+        success: true,
+        latencyMs: 1,
+        message: "Chế độ Offline Generator sẵn sàng (không gọi API ngoài)",
+      });
+    }
+
+    if (!testApiKey) {
+      return res.status(400).json({
+        success: false,
+        error: "Chưa nhập API Key cho Provider này!",
+      });
+    }
+
+    const llm = createLlmProvider({
+      provider: targetProvider,
+      apiKey: testApiKey,
+      model: targetModel,
+      baseUrl: targetBaseUrl,
+    });
+
+    const start = Date.now();
+    const reply = await llm.generate(
+      "You are a helpful test assistant.",
+      "Respond strictly with the single word: OK",
+    );
+    const latencyMs = Date.now() - start;
+
+    res.json({
+      success: true,
+      latencyMs,
+      message: `Kết nối thành công (${latencyMs}ms)! AI phản hồi: "${reply.trim().slice(0, 50)}"`,
+      model: targetModel,
+      provider: targetProvider,
+    });
+  } catch (err: any) {
+    res.status(400).json({
+      success: false,
+      error: err.message || "Lỗi không xác định khi kết nối LLM API",
+    });
   }
 });
 
@@ -246,21 +437,18 @@ app.post("/api/generate-script", async (req, res) => {
     const { title, content, url, domain, image, channel, voiceProvider, voiceId, speed, preset } = req.body;
     if (!title) return res.status(400).json({ error: "Tiêu đề không được để trống" });
 
-    const hasLlmKey = Boolean(
-      process.env.GEMINI_API_KEY ||
-      process.env.LLM_API_KEY ||
-      process.env.OPENAI_API_KEY ||
-      process.env.ANTHROPIC_API_KEY,
-    );
+    const { provider: llmInstance, info: llmInfo } = await getEffectiveLlmProvider();
 
     let script: Script | null = null;
-    if (hasLlmKey) {
+    if (llmInstance) {
       try {
+        log.info(`[Server] Generating script with configured LLM (${llmInfo.provider} / ${llmInfo.model})...`);
         const llmPreset = preset === "review_60" ? "review_60" : "news_short";
         const result = await generateScript({
           input: url || `${title}\n\n${content}`,
           preset: llmPreset,
           channelName: channel || "Công Nghệ 24h",
+          llmProvider: llmInstance,
         });
         script = result.script;
       } catch (err: any) {
@@ -298,23 +486,17 @@ app.post("/api/render", async (req, res) => {
       const { title, content, url, domain, image, channel, voiceId, voiceProvider, preset } = req.body;
       if (!title) return res.status(400).json({ error: "Cần cung cấp title hoặc script" });
 
-      const hasLlmKey = Boolean(
-        process.env.GEMINI_API_KEY ||
-        process.env.LLM_API_KEY ||
-        process.env.OPENAI_API_KEY ||
-        process.env.ANTHROPIC_API_KEY,
-      );
+      const { provider: llmInstance, info: llmInfo } = await getEffectiveLlmProvider();
 
-      if (hasLlmKey) {
+      if (llmInstance) {
         try {
-          const providerName =
-            process.env.LLM_PROVIDER || (process.env.GEMINI_API_KEY ? "gemini" : "openai");
-          log.info(`[Server] Generating script with LLM (${providerName})...`);
+          log.info(`[Server] Generating script with configured LLM (${llmInfo.provider} / ${llmInfo.model})...`);
           const llmPreset = preset === "review_60" ? "review_60" : "news_short";
           const llmResult = await generateScript({
             input: url || `${title}\n\n${content}`,
             preset: llmPreset,
             channelName: channel || "Công Nghệ 24h",
+            llmProvider: llmInstance,
           });
           scriptData = llmResult.script;
         } catch (llmErr: any) {
@@ -948,9 +1130,11 @@ app.post("/api/projects/:slug/captions", async (req, res) => {
 
 // Start Server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`\n======================================================`);
-  console.log(`🎬 Auto Video Gen Web Dashboard is running!`);
-  console.log(`👉 Open: http://localhost:${PORT}`);
-  console.log(`======================================================\n`);
-});
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`\n======================================================`);
+    console.log(`🎬 Auto Video Gen Web Dashboard is running!`);
+    console.log(`👉 Open: http://localhost:${PORT}`);
+    console.log(`======================================================\n`);
+  });
+}
