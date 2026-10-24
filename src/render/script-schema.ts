@@ -92,10 +92,20 @@ const Scene = z.object({
   sfx: SfxSpec.optional(),
 });
 
+// ── Caption schema (M1) ────────────────────────────────────────────────────
+export const CaptionOptions = z.object({
+  enabled: z.boolean().default(true),
+  style: z.enum(["tiktok-bold", "classic-sub", "minimal"]).default("tiktok-bold"),
+});
+
+export type CaptionOptionsType = z.infer<typeof CaptionOptions>;
+
 // ── Root schema ────────────────────────────────────────────────────────────
 
 export const ScriptSchema = z.object({
-  version: z.literal("1.0"),
+  version: z.string().optional(),
+  schemaVersion: z.union([z.literal(1), z.literal(2)]).optional(),
+  captions: CaptionOptions.optional(),
   metadata: z.object({
     title: z.string().min(1),
     source: z.object({

@@ -1,6 +1,6 @@
 import axios, { AxiosError } from "axios";
 import { writeFile } from "node:fs/promises";
-import type { TtsClient } from "./tts-client.js";
+import type { TtsClient, TtsTimingResult } from "./tts-client.js";
 
 export interface VbeeOpts {
   appId: string;
@@ -45,10 +45,11 @@ class VbeeApiError extends Error {}
 export class VbeeClient implements TtsClient {
   constructor(private cfg: VbeeOpts) {}
 
-  async generate(text: string, audioOutPath: string, _srtOutPath?: string): Promise<void> {
+  async generate(text: string, audioOutPath: string, _srtOutPath?: string): Promise<TtsTimingResult> {
     const created = await this.submitWithRetry(text);
     const audioLink = created.audio_link ?? (await this.pollUntilDone(created.request_id));
     await this.download(audioLink, audioOutPath);
+    return { accuracy: "low", words: [] };
   }
 
   private async submitWithRetry(text: string): Promise<TtsCreateResult> {

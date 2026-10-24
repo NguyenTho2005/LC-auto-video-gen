@@ -195,4 +195,39 @@ window.__timelines["news-video"] = tl;
       tl.to(ttCard, { scale: 1.08, duration: holdLen }, holdStart);
     }
   }
+
+  // ── CAPTIONS ANIMATION (M1) ──────────────────────────────────────────────
+  const captionCues = Array.from(stage.querySelectorAll(".caption-cue"));
+  captionCues.forEach((cue) => {
+    const cueStart = parseFloat(cue.dataset.start);
+    const cueDur   = parseFloat(cue.dataset.duration || "1.0");
+    const cueEnd   = cueStart + cueDur;
+
+    // Initial cue state: hidden
+    tl.set(cue, { opacity: 0, visibility: "hidden" }, 0);
+    // Show cue during its active time window
+    tl.set(cue, { opacity: 1, visibility: "visible" }, cueStart);
+    tl.set(cue, { opacity: 0, visibility: "hidden" }, cueEnd);
+
+    // Word-level highlight
+    const words = Array.from(cue.querySelectorAll(".caption-word"));
+    words.forEach((w) => {
+      const wStart = parseFloat(w.dataset.wordStart || w.dataset.start || "0");
+      const wDur   = parseFloat(w.dataset.wordDuration || w.dataset.duration || "0.2");
+      const wEnd   = wStart + wDur;
+      const highlight = w.querySelector(".word-highlight");
+
+      // Initial word state
+      tl.set(w, { scale: 1.0 }, 0);
+      if (highlight) tl.set(highlight, { opacity: 0 }, 0);
+
+      // Active word state: scale up and reveal highlight
+      tl.set(w, { scale: 1.15 }, wStart);
+      if (highlight) tl.set(highlight, { opacity: 1 }, wStart);
+
+      // Finished word state: reset to normal
+      tl.set(w, { scale: 1.0 }, wEnd);
+      if (highlight) tl.set(highlight, { opacity: 0 }, wEnd);
+    });
+  });
 })();

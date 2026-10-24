@@ -1,7 +1,18 @@
+export interface WordTiming {
+  text: string;
+  startMs: number;
+  endMs: number;
+}
+
+export interface TtsTimingResult {
+  accuracy: "high" | "low";
+  words: WordTiming[];
+}
+
 /**
  * Common TTS client interface.
  *
- * All providers (LucyLab, ElevenLabs) implement this so the pipeline
+ * All providers (Edge TTS, LucyLab, ElevenLabs, Vbee) implement this so the pipeline
  * can swap providers without changing orchestration logic.
  */
 export interface TtsClient {
@@ -9,8 +20,10 @@ export interface TtsClient {
    * Generate speech audio for `text` and write to `audioOutPath` (mp3 or wav).
    * If `srtOutPath` is provided AND the provider supports subtitles,
    * write the SRT to that path. Otherwise silently skip.
+   *
+   * Optionally returns word-level timings if available.
    */
-  generate(text: string, audioOutPath: string, srtOutPath?: string): Promise<void>;
+  generate(text: string, audioOutPath: string, srtOutPath?: string): Promise<TtsTimingResult | void>;
 }
 
 import type { Config } from "../config.js";

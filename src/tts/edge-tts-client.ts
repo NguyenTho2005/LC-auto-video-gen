@@ -2,7 +2,7 @@ import { EdgeTTS, createSRT } from "edge-tts-universal";
 import { writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import type { TtsClient } from "./tts-client.js";
+import type { TtsClient, TtsTimingResult, WordTiming } from "./tts-client.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -19,13 +19,13 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * Edge TTS client using Microsoft Edge online text-to-speech service (Free).
  * Uses edge-tts-universal with automatic fallback to python edge-tts CLI.
  *
- * Supports subtitle generation (SRT) via word boundary cues.
+ * Supports subtitle generation (SRT) and word boundary cues.
  */
 export class EdgeTtsClient implements TtsClient {
   constructor(private cfg: EdgeTtsOpts) {}
 
-  async generate(text: string, audioOutPath: string, srtOutPath?: string): Promise<void> {
-    await this.synthesizeWithRetry(text, audioOutPath, srtOutPath);
+  async generate(text: string, audioOutPath: string, srtOutPath?: string): Promise<TtsTimingResult> {
+    return await this.synthesizeWithRetry(text, audioOutPath, srtOutPath);
   }
 
   private async tryPythonEdgeTts(
@@ -61,7 +61,7 @@ export class EdgeTtsClient implements TtsClient {
     text: string,
     audioOutPath: string,
     srtOutPath?: string,
-  ): Promise<void> {
+  ): Promise<TtsTimingResult> {
     const delays = [1000, 2000, 4000];
     let lastErr: unknown;
 
@@ -85,16 +85,33 @@ export class EdgeTtsClient implements TtsClient {
         }
         await writeFile(audioOutPath, buffer);
 
-        if (srtOutPath && result.subtitle && result.subtitle.length > 0) {
-          const srtContent = createSRT(result.subtitle);
-          await writeFile(srtOutPath, srtContent, "utf8");
+        const words: WordTiming[] = [];
+        if (result.subtitle && result.subtitle.length > 0) {
+          for (const item of result.subtitle) {
+            // Offset and duration are in 100ns units (10,000 units = 1ms)
+            const startMs = Math.round(item.offset / 10_000);
+            const durMs = Math.round(item.duration / 10_000);
+            words.push({
+              text: item.text.trim(),
+              startMs,
+              endMs: startMs + durMs,
+            });
+          }
+
+          if (srtOutPath) {
+            const srtContent = createSRT(result.subtitle);
+            await writeFile(srtOutPath, srtContent, "utf8");
+          }
+
+          return { accuracy: "high", words };
         }
-        return;
+
+        return { accuracy: "low", words: [] };
       } catch (e) {
         lastErr = e;
         if (!process.env.VITEST) {
           const pythonOk = await this.tryPythonEdgeTts(text, audioOutPath, srtOutPath);
-          if (pythonOk) return;
+          if (pythonOk) return { accuracy: "low", words: [] };
         }
         if (attempt === delays.length) throw e;
         await sleep(delays[attempt]);

@@ -15,6 +15,7 @@
     "serve": "tsx src/server.ts",
     "start": "tsx src/server.ts",
     "rerender": "tsx rerender.ts",
+    "captions:import": "tsx src/captions/import-cli.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc",
     "sfx:download": "tsx scripts/download-sfx.ts",

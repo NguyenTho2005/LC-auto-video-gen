@@ -17,6 +17,8 @@ import { indexSfxLibrary, pickSfxForScene, defaultPlayback } from "./src/assets/
 import { existsSync } from "node:fs";
 import { composeHtml } from "./src/render/html-composer.js";
 import { renderWithHyperframes } from "./src/render/hyperframes-runner.js";
+import { parseSrt } from "./src/captions/srt.js";
+import type { CaptionCue } from "./src/captions/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TPL_DIR = join(__dirname, "src", "render", "templates");
@@ -126,6 +128,20 @@ async function main() {
   // Always re-copy in case bundled was updated
   await copyFile(bundledAvatar, ttAvatarOut);
 
+  // Load optional captions (M1)
+  let captionCues: CaptionCue[] | undefined;
+  const captionsJsonPath = join(outputDir, "captions.json");
+  const captionsSrtPath = join(outputDir, "captions.srt");
+  if (existsSync(captionsJsonPath)) {
+    try {
+      captionCues = JSON.parse(await readFile(captionsJsonPath, "utf8"));
+    } catch {}
+  } else if (existsSync(captionsSrtPath)) {
+    try {
+      captionCues = parseSrt(await readFile(captionsSrtPath, "utf8"));
+    } catch {}
+  }
+
   // Compose HTML
   const html = composeHtml({
     script,
@@ -136,6 +152,7 @@ async function main() {
     tiktok: cfg.tiktok,
     tiktokAvatarRelPath: ttAvatarFile,
     outroHoldSec: 3,
+    captionCues,
   });
   await writeFile(join(outputDir, "index.html"), html);
   await writeFile(join(outputDir, "hyperframes.json"), JSON.stringify(HYPERFRAMES_CONFIG, null, 2));

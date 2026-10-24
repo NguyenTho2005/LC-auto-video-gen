@@ -12,6 +12,10 @@ import { existsSync } from "node:fs";
 import { composeHtml } from "./render/html-composer.js";
 import { renderWithHyperframes } from "./render/hyperframes-runner.js";
 import { log } from "./utils/logger.js";
+import { groupWordsIntoCues } from "./captions/grouper.js";
+import { generateSrt, parseSrt } from "./captions/srt.js";
+import { estimateWordTimings } from "./captions/estimator.js";
+import type { TimedWord, CaptionCue } from "./captions/types.js";
 
 const TOTAL_STEPS = 8;
 const DURATION_MIN_SEC = 48;
@@ -80,6 +84,9 @@ export async function runPipeline(scriptPath: string): Promise<void> {
     limit(async () => {
       const out = join(voiceDir, `scene-${scene.id}.mp3`);
       const srtOut = join(voiceDir, `scene-${scene.id}.srt`);
+      const wordsPath = join(voiceDir, `scene-${scene.id}.words.json`);
+      let words: TimedWord[] = [];
+      let accuracy: "high" | "low" = "low";
 
       // IDEMPOTENT: skip TTS if voice file already exists.
       // To force re-TTS for a scene, delete its mp3 file before running.
@@ -87,14 +94,50 @@ export async function runPipeline(scriptPath: string): Promise<void> {
       if (existsSync(out)) {
         const dur = await getDurationSec(out);
         log.info(`  scene ${scene.id}: REUSE existing mp3 (${dur.toFixed(2)}s) — delete to force re-TTS`);
-        return { id: scene.id, path: out, durationSec: dur };
+        if (existsSync(wordsPath)) {
+          try {
+            words = JSON.parse(await readFile(wordsPath, "utf8"));
+            accuracy = "high";
+          } catch {}
+        } else if (existsSync(srtOut)) {
+          try {
+            const srtCues = parseSrt(await readFile(srtOut, "utf8"));
+            words = srtCues.flatMap((c) => c.words);
+            accuracy = "high";
+          } catch {}
+        }
+        if (words.length === 0) {
+          words = estimateWordTimings(scene.voiceText, dur);
+          accuracy = "low";
+        }
+        return { id: scene.id, path: out, durationSec: dur, words, accuracy };
       }
 
       log.info(`  TTS scene ${scene.id} (${scene.voiceText.length} chars)...`);
-      await ttsClient.generate(scene.voiceText, out, srtOut);
+      const timing = await ttsClient.generate(scene.voiceText, out, srtOut);
       const dur = await getDurationSec(out);
       log.info(`  scene ${scene.id}: ${dur.toFixed(2)}s`);
-      return { id: scene.id, path: out, durationSec: dur };
+
+      if (timing && timing.words && timing.words.length > 0) {
+        words = timing.words;
+        accuracy = timing.accuracy;
+        await writeFile(wordsPath, JSON.stringify(words, null, 2), "utf8");
+      } else if (existsSync(srtOut)) {
+        try {
+          const srtCues = parseSrt(await readFile(srtOut, "utf8"));
+          words = srtCues.flatMap((c) => c.words);
+          accuracy = "high";
+          await writeFile(wordsPath, JSON.stringify(words, null, 2), "utf8");
+        } catch {}
+      }
+
+      if (words.length === 0) {
+        words = estimateWordTimings(scene.voiceText, dur);
+        accuracy = "low";
+        await writeFile(wordsPath, JSON.stringify(words, null, 2), "utf8");
+      }
+
+      return { id: scene.id, path: out, durationSec: dur, words, accuracy };
     }),
   );
 
@@ -180,6 +223,23 @@ export async function runPipeline(scriptPath: string): Promise<void> {
     log.warn(`Total duration ${totalAudioSec.toFixed(1)}s outside [${DURATION_MIN_SEC}, ${DURATION_MAX_SEC}]s tolerance — proceeding anyway`);
   }
 
+  // Build global captions (M1)
+  const allCues: CaptionCue[] = [];
+  let cueIdCounter = 1;
+  for (const a of sceneAudio) {
+    const startSec = sceneStarts[a.id];
+    const sceneStartMs = Math.round(startSec * 1000);
+    const sceneCues = groupWordsIntoCues(a.words, { sceneStartMs }, cueIdCounter);
+    cueIdCounter += sceneCues.length;
+    allCues.push(...sceneCues);
+  }
+
+  // Export captions.srt and captions.json for the full video
+  const srtContent = generateSrt(allCues);
+  await writeFile(join(outputDir, "captions.srt"), srtContent, "utf8");
+  await writeFile(join(outputDir, "captions.json"), JSON.stringify(allCues, null, 2), "utf8");
+  log.info(`  Captions: exported ${allCues.length} cues → captions.srt & captions.json`);
+
   // STEP 6 — Compose HTML + write hyperframes project files
   log.step(6, TOTAL_STEPS, "Compose HTML + project files");
 
@@ -216,6 +276,7 @@ export async function runPipeline(scriptPath: string): Promise<void> {
     tiktok: cfg.tiktok,
     tiktokAvatarRelPath: ttAvatarFile,
     outroHoldSec: OUTRO_HOLD_SEC,
+    captionCues: allCues,
   });
 
   // hyperframes expects: index.html (NOT composition.html), hyperframes.json, meta.json in DIR

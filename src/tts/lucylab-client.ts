@@ -1,6 +1,8 @@
 import axios, { AxiosError } from "axios";
 import { writeFile } from "node:fs/promises";
-import type { TtsClient } from "./tts-client.js";
+import { readFileSync } from "node:fs";
+import type { TtsClient, TtsTimingResult } from "./tts-client.js";
+import { parseSrt } from "../captions/srt.js";
 
 export interface LucylabOpts {
   apiKey: string;
@@ -33,13 +35,24 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export class LucylabClient implements TtsClient {
   constructor(private cfg: LucylabOpts) {}
 
-  async generate(text: string, audioOutPath: string, srtOutPath?: string): Promise<void> {
+  async generate(text: string, audioOutPath: string, srtOutPath?: string): Promise<TtsTimingResult> {
     const projectExportId = await this.submitWithRetry(text);
     const { url, srtUrl } = await this.pollUntilDone(projectExportId);
     await this.download(url, audioOutPath);
     if (srtOutPath && srtUrl) {
       await this.download(srtUrl, srtOutPath);
+      try {
+        const srtContent = readFileSync(srtOutPath, "utf8");
+        const cues = parseSrt(srtContent);
+        return {
+          accuracy: "high",
+          words: cues.flatMap((c) => c.words),
+        };
+      } catch {
+        return { accuracy: "low", words: [] };
+      }
     }
+    return { accuracy: "low", words: [] };
   }
 
   private async rpc<T>(method: string, input: unknown, idHint: string): Promise<T> {

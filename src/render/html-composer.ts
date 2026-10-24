@@ -3,6 +3,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Script, TemplateDataType } from "./script-schema.js";
 import type { TiktokConfig } from "../config.js";
+import type { CaptionCue } from "../captions/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TPL_DIR = join(__dirname, "templates");
@@ -37,6 +38,8 @@ export interface ComposeArgs {
   tiktokAvatarRelPath?: string;
   /** Extra seconds added to outro scene visual duration after voice ends (TikTok card hold). Default 3. */
   outroHoldSec?: number;
+  /** Optional caption cues for word-by-word synced subtitles (M1). */
+  captionCues?: CaptionCue[];
 }
 
 export function composeHtml(args: ComposeArgs): string {
@@ -67,6 +70,14 @@ export function composeHtml(args: ComposeArgs): string {
   // Persistent shell — uses tiktok handle in footer and avatar in header
   const shellHtml = renderShell(script.metadata, tiktok, tiktokAvatar);
 
+  // Render optional captions layer (M1)
+  const captionsEnabled = script.captions?.enabled ?? false;
+  let captionsHtml = "";
+  if (captionsEnabled && args.captionCues && args.captionCues.length > 0) {
+    const style = script.captions?.style ?? "tiktok-bold";
+    captionsHtml = renderCaptions(args.captionCues, style);
+  }
+
   const animJs = readFileSync(join(TPL_DIR, "animations.js"), "utf8");
 
   const tpl = readFileSync(join(TPL_DIR, "base.html.tmpl"), "utf8");
@@ -75,8 +86,27 @@ export function composeHtml(args: ComposeArgs): string {
     .replace(/\{\{TOTAL_DURATION\}\}/g, totalDuration.toFixed(2))
     .replace("{{SHELL}}", shellHtml)
     .replace("{{SCENES}}", sceneHtml)
+    .replace("{{CAPTIONS}}", captionsHtml)
     .replace(/src="voice\.mp3"/g, `src="${audioRelPath}"`)
     .replace('<script src="animations.js"></script>', `<script>\n${animJs}\n</script>`);
+}
+
+// ── CAPTIONS LAYER (M1) ────────────────────────────────────────────────────
+function renderCaptions(cues: CaptionCue[], style: string): string {
+  return `
+<!-- Captions layer (M1) -->
+<div class="captions-container caption-style-${escapeHtml(style)}">
+  ${cues.map((cue) => {
+    const cueDur = (cue.endSec - cue.startSec).toFixed(3);
+    return `  <div class="caption-cue clip" data-start="${cue.startSec.toFixed(3)}" data-duration="${cueDur}">
+    ${cue.words.map((w) => {
+      const wStart = (w.startMs / 1000).toFixed(3);
+      const wDur = Math.max(0.05, (w.endMs - w.startMs) / 1000).toFixed(3);
+      return `<span class="caption-word" data-word-start="${wStart}" data-word-duration="${wDur}"><span class="word-text">${escapeHtml(w.text)}</span><span class="word-highlight">${escapeHtml(w.text)}</span></span>`;
+    }).join(" ")}
+  </div>`;
+  }).join("\n")}
+</div>`;
 }
 
 // ── PERSISTENT SHELL ───────────────────────────────────────────────────────

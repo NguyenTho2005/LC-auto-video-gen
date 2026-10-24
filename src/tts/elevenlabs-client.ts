@@ -1,6 +1,6 @@
 import axios, { AxiosError } from "axios";
 import { writeFile } from "node:fs/promises";
-import type { TtsClient } from "./tts-client.js";
+import type { TtsClient, TtsTimingResult } from "./tts-client.js";
 
 export interface ElevenLabsOpts {
   apiKey: string;
@@ -25,9 +25,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export class ElevenLabsClient implements TtsClient {
   constructor(private cfg: ElevenLabsOpts) {}
 
-  async generate(text: string, audioOutPath: string, _srtOutPath?: string): Promise<void> {
+  async generate(text: string, audioOutPath: string, _srtOutPath?: string): Promise<TtsTimingResult> {
     await this.synthesizeWithRetry(text, audioOutPath);
-    // ElevenLabs has no SRT — silently skip srtOutPath.
+    return { accuracy: "low", words: [] };
   }
 
   private async synthesizeWithRetry(text: string, outPath: string): Promise<void> {
