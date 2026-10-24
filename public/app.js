@@ -500,8 +500,11 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="video-card-actions">
             ${hasMp4 ? `
               <button class="btn btn-sm btn-primary btn-play-card" style="flex:1;">
-                <span>Phát Video</span>
+                <span>▶ Phát Video</span>
               </button>
+              <a href="/api/videos/${vid.slug}/download" download="${vid.slug}.mp4" class="btn btn-sm btn-outline btn-download-card" title="Tải file video MP4 về máy">
+                <span>⬇️ Tải MP4</span>
+              </a>
             ` : ""}
             <button class="btn btn-sm btn-outline btn-delete-card" title="Xóa video này">
               <span>🗑️</span>
@@ -551,16 +554,17 @@ document.addEventListener("DOMContentLoaded", () => {
     playerVideoMeta.textContent = `${vid.videoSizeMb ? `${vid.videoSizeMb} MB · ` : ""}Độ phân giải dọc 1080x1920 (9:16)`;
 
     const mp4Url = vid.videoUrl || `/api/videos/${vid.slug}/file/video.mp4`;
+    const downloadUrl = `/api/videos/${vid.slug}/download`;
     const mp3Url = vid.audioUrl || `/api/videos/${vid.slug}/file/voice.mp3`;
 
     activeVideoPlayer.src = mp4Url;
     activeVideoPlayer.play().catch(() => {});
 
-    btnDownloadMp4.href = mp4Url;
-    btnDownloadMp4.download = `${vid.slug}.mp4`;
+    btnDownloadMp4.href = downloadUrl;
+    btnDownloadMp4.setAttribute("download", `${vid.slug}.mp4`);
 
     btnDownloadMp3.href = mp3Url;
-    btnDownloadMp3.download = `${vid.slug}-voice.mp3`;
+    btnDownloadMp3.setAttribute("download", `${vid.slug}-voice.mp3`);
 
     playerCaptionBox.textContent = vid.caption || `${vid.title}\n\n#congnghe #thuthuat #cuongit #xuhuong`;
 
@@ -570,9 +574,11 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     };
 
-    btnOpenInStudio.onclick = () => {
-      window.open("http://localhost:3002", "_blank");
-    };
+    if (btnOpenInStudio) {
+      btnOpenInStudio.onclick = () => {
+        window.open("http://localhost:3002", "_blank");
+      };
+    }
 
     playerModal.style.display = "flex";
   }
@@ -834,20 +840,30 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function setupPreviewPlayer() {
-    previewPlaceholder.style.display = "none";
-    if (currentProject.previewUrl) {
-      iframePreview.style.display = "block";
+    if (!currentProject) {
+      iframePreview.style.display = "none";
       videoPreviewFallback.style.display = "none";
-      iframePreview.src = currentProject.previewUrl;
-    } else if (currentProject.videoUrl) {
+      previewPlaceholder.style.display = "flex";
+      previewPlaceholder.innerHTML = `<span>📱 Chưa chọn dự án để xem trước</span>`;
+      return;
+    }
+
+    previewPlaceholder.style.display = "none";
+    if (currentProject.videoUrl) {
       iframePreview.style.display = "none";
       videoPreviewFallback.style.display = "block";
       videoPreviewFallback.src = currentProject.videoUrl;
+      videoPreviewFallback.currentTime = playheadTime || 0;
+      videoPreviewFallback.load();
+    } else if (currentProject.previewUrl) {
+      iframePreview.style.display = "block";
+      videoPreviewFallback.style.display = "none";
+      iframePreview.src = currentProject.previewUrl;
     } else {
       iframePreview.style.display = "none";
       videoPreviewFallback.style.display = "none";
       previewPlaceholder.style.display = "flex";
-      previewPlaceholder.innerHTML = `<span>⏳ Dự án chưa render.<br>Sử dụng Timeline Editor và bấm Render Video!</span>`;
+      previewPlaceholder.innerHTML = `<span>⏳ Dự án chưa render.<br>Sử dụng Timeline Editor và bấm <b>Render Video</b>!</span>`;
     }
   }
 
@@ -1000,17 +1016,21 @@ document.addEventListener("DOMContentLoaded", () => {
       const deltaSec = (timestamp - lastFrameTimestamp) / 1000;
       lastFrameTimestamp = timestamp;
 
-      playheadTime += deltaSec;
-      const total = currentProject?.timelineState?.totalDuration || 30;
+      // When video is active and playing natively, timeupdate handles playheadTime
+      if (videoPreviewFallback.style.display === "none" || videoPreviewFallback.paused) {
+        playheadTime += deltaSec;
+        const total = currentProject?.timelineState?.totalDuration || 30;
 
-      if (playheadTime >= total) {
-        playheadTime = 0;
-        stopPlayback();
-        return;
+        if (playheadTime >= total) {
+          playheadTime = 0;
+          stopPlayback();
+          return;
+        }
+
+        updatePlayheadPosition();
+        seekPreview(playheadTime);
       }
 
-      updatePlayheadPosition();
-      seekPreview(playheadTime);
       playAnimFrame = requestAnimationFrame(step);
     }
 
@@ -1026,16 +1046,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
   btnPlayPause.addEventListener("click", togglePlayback);
 
+  // Sync video preview events
+  videoPreviewFallback.addEventListener("timeupdate", () => {
+    if (isPlaying && videoPreviewFallback.style.display !== "none") {
+      playheadTime = videoPreviewFallback.currentTime;
+      updatePlayheadPosition();
+    }
+  });
+
+  videoPreviewFallback.addEventListener("ended", () => {
+    stopPlayback();
+    playheadTime = 0;
+    updatePlayheadPosition();
+  });
+
   function seekPreview(time) {
-    if (iframePreview.style.display !== "none" && iframePreview.contentWindow) {
+    if (videoPreviewFallback.style.display !== "none" && videoPreviewFallback.src) {
+      const dur = videoPreviewFallback.duration || time;
+      videoPreviewFallback.currentTime = Math.min(time, dur);
+    } else if (iframePreview.style.display !== "none" && iframePreview.contentWindow) {
       try {
         const win = iframePreview.contentWindow;
         if (win.__timelines && win.__timelines["news-video"]) {
           win.__timelines["news-video"].seek(time);
         }
       } catch {}
-    } else if (videoPreviewFallback.style.display !== "none" && !isPlaying) {
-      videoPreviewFallback.currentTime = time;
     }
   }
 
@@ -1559,4 +1594,5 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initial Fetch
   fetchVideoList();
+  loadProjectsList();
 });

@@ -505,6 +505,7 @@ app.get("/api/videos/:slug/file/:filename", async (req, res) => {
   const statData = await stat(filePath);
   const fileSize = statData.size;
   const range = req.headers.range;
+  const isDownload = req.query.download === "true" || req.query.download === "1";
 
   const contentType =
     filename.endsWith(".mp4") ? "video/mp4"
@@ -512,9 +513,23 @@ app.get("/api/videos/:slug/file/:filename", async (req, res) => {
     : filename.endsWith(".txt") ? "text/plain; charset=utf-8"
     : filename.endsWith(".json") ? "application/json"
     : filename.endsWith(".html") ? "text/html; charset=utf-8"
+    : filename.endsWith(".css") ? "text/css; charset=utf-8"
+    : filename.endsWith(".js") ? "application/javascript; charset=utf-8"
+    : filename.endsWith(".png") ? "image/png"
+    : filename.endsWith(".jpg") || filename.endsWith(".jpeg") ? "image/jpeg"
+    : filename.endsWith(".webp") ? "image/webp"
+    : filename.endsWith(".svg") ? "image/svg+xml"
     : "application/octet-stream";
 
-  if (range && filename.endsWith(".mp4")) {
+  const headers: Record<string, string | number> = {
+    "Content-Type": contentType,
+  };
+
+  if (isDownload) {
+    headers["Content-Disposition"] = `attachment; filename="${encodeURIComponent(filename)}"`;
+  }
+
+  if (range && filename.endsWith(".mp4") && !isDownload) {
     const parts = range.replace(/bytes=/, "").split("-");
     const start = parseInt(parts[0], 10);
     const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
@@ -522,19 +537,29 @@ app.get("/api/videos/:slug/file/:filename", async (req, res) => {
     const fileStream = createReadStream(filePath, { start, end });
 
     res.writeHead(206, {
+      ...headers,
       "Content-Range": `bytes ${start}-${end}/${fileSize}`,
       "Accept-Ranges": "bytes",
       "Content-Length": chunksize,
-      "Content-Type": contentType,
     });
     fileStream.pipe(res);
   } else {
     res.writeHead(200, {
+      ...headers,
       "Content-Length": fileSize,
-      "Content-Type": contentType,
     });
     createReadStream(filePath).pipe(res);
   }
+});
+
+// ── API: Direct Video Download ──────────────────────────────────────────────
+app.get("/api/videos/:slug/download", async (req, res) => {
+  const { slug } = req.params;
+  const filePath = join(OUTPUT_DIR, slug, "video.mp4");
+  if (!existsSync(filePath)) {
+    return res.status(404).json({ error: "Không tìm thấy file video.mp4" });
+  }
+  res.download(filePath, `${slug}.mp4`);
 });
 
 // ── API: Delete video folder ────────────────────────────────────────────────
