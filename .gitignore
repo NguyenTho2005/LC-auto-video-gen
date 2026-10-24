@@ -12,3 +12,12 @@ debug-lucylab.ts
 SFX/
 docs/superpowers
 
+# Python caches / venvs
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+*.pyc
+
+
