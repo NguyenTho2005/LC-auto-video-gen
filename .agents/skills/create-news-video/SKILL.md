@@ -123,6 +123,74 @@ RIGHT (natural):
 }
 ```
 
+### Template Selection Guide (M3 Review Templates Extension)
+
+In addition to core news templates (`hook`, `comparison`, `stat-hero`, `feature-list`, `callout`, `outro`), use review templates when analyzing products, hardware, software, or tech gadgets:
+
+1. **`spec-table`**: Hiển thị bảng thông số kỹ thuật (chip, RAM, pin, camera...). Tối đa 6 dòng thông số.
+   ```json
+   {
+     "template": "spec-table",
+     "productName": "iPhone 16 Pro Max",
+     "specs": [
+       { "label": "Chip", "value": "Apple A18 Pro" },
+       { "label": "Màn hình", "value": "6.9 inch OLED 120Hz" },
+       { "label": "Camera", "value": "48MP Fusion + 5x Tele" },
+       { "label": "Pin", "value": "4685 mAh (sạc 25W)" }
+     ]
+   }
+   ```
+2. **`pros-cons`**: Cân nhắc hai mặt ưu điểm & nhược điểm (mỗi cột 1-4 ý ngắn gọn ≤ 50 ký tự).
+   ```json
+   {
+     "template": "pros-cons",
+     "title": "Ưu và Nhược điểm",
+     "pros": ["Hiệu năng đỉnh cao A18 Pro", "Thời lượng pin cực trâu", "Màn hình viền siêu mỏng"],
+     "cons": ["Tốc độ sạc chưa đột phá", "Trọng lượng còn khá đầm tay"]
+   }
+   ```
+3. **`verdict-score`**: Chấm điểm sản phẩm (thang 10 hoặc 100), kết luận nhanh và 1 câu đánh giá tóm tắt.
+   ```json
+   {
+     "template": "verdict-score",
+     "productName": "Galaxy S26 Ultra",
+     "score": 9.2,
+     "scale": "10",
+     "verdict": "Flagship toàn diện",
+     "summary": "Chiếc điện thoại Android hoàn hảo nhất cho công việc và giải trí."
+   }
+   ```
+4. **`price-tag`**: Trình bày giá bán sản phẩm nổi bật, kèm biến thể và ghi chú.
+   ```json
+   {
+     "template": "price-tag",
+     "productName": "MacBook Pro M4",
+     "price": "39.990.000đ",
+     "variant": "Bản 14-inch 16GB / 512GB",
+     "note": "Chính hãng Apple Store VN"
+   }
+   ```
+5. **`image-gallery`**: Trưng bày 1-3 hình ảnh sản phẩm (ảnh chi tiết, màu sắc, ngoại hình).
+   ```json
+   {
+     "template": "image-gallery",
+     "title": "Các phiên bản màu sắc",
+     "images": [
+       { "src": "media/desert-titanium.jpg", "caption": "Titan Sa mạc" },
+       { "src": "media/natural-titanium.jpg", "caption": "Titan Tự nhiên" }
+     ]
+   }
+   ```
+6. **`phone-mockup`**: Trưng bày ảnh giao diện ứng dụng, website, bài viết đặt bên trong khung điện thoại 9:16.
+   ```json
+   {
+     "template": "phone-mockup",
+     "title": "Trải nghiệm giao diện mới",
+     "screenSrc": "media/screenshot-app.jpg",
+     "caption": "Giao diện Liquid Glass mượt mà"
+   }
+   ```
+
 **Hook (most important — gets first 3 seconds of viewer attention):**
 - Must contain a claim, statistic, or curious question
 - NEVER generic ("Hôm nay chúng ta sẽ nói về..." is wrong)

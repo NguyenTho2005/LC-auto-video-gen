@@ -182,6 +182,30 @@ function renderScene(
       inner = renderOutroInner(td, tiktok, tiktokAvatarRelPath);
       layoutName = "outro";
       break;
+    case "spec-table":
+      inner = renderSpecTableInner(td);
+      layoutName = "spec-table";
+      break;
+    case "pros-cons":
+      inner = renderProsConsInner(td);
+      layoutName = "pros-cons";
+      break;
+    case "verdict-score":
+      inner = renderVerdictScoreInner(td);
+      layoutName = "verdict-score";
+      break;
+    case "price-tag":
+      inner = renderPriceTagInner(td);
+      layoutName = "price-tag";
+      break;
+    case "image-gallery":
+      inner = renderImageGalleryInner(td);
+      layoutName = "image-gallery";
+      break;
+    case "phone-mockup":
+      inner = renderPhoneMockupInner(td);
+      layoutName = "phone-mockup";
+      break;
     default: {
       const _never: never = td;
       throw new Error(`Unknown template: ${(_never as any).template}`);
@@ -299,6 +323,116 @@ function renderOutroInner(
   <div class="out-source">Nguồn: ${escapeHtml(td.source)}</div>
 </div>
 ${ttCard}`.trim();
+}
+
+// ── SPEC TABLE SCENE (M3) ──────────────────────────────────────────────────
+function renderSpecTableInner(td: Extract<TemplateDataType, { template: "spec-table" }>): string {
+  return `
+<div class="layout-spec-table">
+  <div class="spec-header shimmer-sweep-target">${escapeHtml(td.productName)}</div>
+  <div class="spec-subtitle">THÔNG SỐ KỸ THUẬT</div>
+  <div class="spec-list">
+    ${td.specs.map((s, idx) => `
+    <div class="spec-row spec-row-${idx}">
+      <span class="spec-label">${escapeHtml(s.label)}</span>
+      <span class="spec-value">${escapeHtml(s.value)}</span>
+    </div>`).join("\n    ")}
+  </div>
+</div>`.trim();
+}
+
+// ── PROS CONS SCENE (M3) ───────────────────────────────────────────────────
+function renderProsConsInner(td: Extract<TemplateDataType, { template: "pros-cons" }>): string {
+  const titleHtml = td.title ? `<div class="pros-cons-title">${escapeHtml(td.title)}</div>` : "";
+  return `
+<div class="layout-pros-cons">
+  ${titleHtml}
+  <div class="pros-cons-grid">
+    <div class="pros-col">
+      <div class="pros-header">✓ ƯU ĐIỂM</div>
+      <div class="pros-list">
+        ${td.pros.map((p, idx) => `
+        <div class="pro-item pro-item-${idx}">
+          <span class="pro-icon">✓</span>
+          <span class="pro-text">${escapeHtml(p)}</span>
+        </div>`).join("\n        ")}
+      </div>
+    </div>
+    <div class="cons-col">
+      <div class="cons-header">✕ NHƯỢC ĐIỂM</div>
+      <div class="cons-list">
+        ${td.cons.map((c, idx) => `
+        <div class="con-item con-item-${idx}">
+          <span class="con-icon">✕</span>
+          <span class="con-text">${escapeHtml(c)}</span>
+        </div>`).join("\n        ")}
+      </div>
+    </div>
+  </div>
+</div>`.trim();
+}
+
+// ── VERDICT SCORE SCENE (M3) ───────────────────────────────────────────────
+function renderVerdictScoreInner(td: Extract<TemplateDataType, { template: "verdict-score" }>): string {
+  const scaleText = td.scale === "100" ? "/100" : "/10";
+  return `
+<div class="layout-verdict-score">
+  <div class="verdict-product">${escapeHtml(td.productName)}</div>
+  <div class="verdict-score-badge shimmer-sweep-target">
+    <span class="score-number">${td.score}</span>
+    <span class="score-scale">${scaleText}</span>
+  </div>
+  <div class="verdict-tag">${escapeHtml(td.verdict)}</div>
+  <div class="verdict-summary">${escapeHtml(td.summary)}</div>
+</div>`.trim();
+}
+
+// ── PRICE TAG SCENE (M3) ───────────────────────────────────────────────────
+function renderPriceTagInner(td: Extract<TemplateDataType, { template: "price-tag" }>): string {
+  const variantHtml = td.variant ? `<div class="price-variant">${escapeHtml(td.variant)}</div>` : "";
+  const noteHtml = td.note ? `<div class="price-note">${escapeHtml(td.note)}</div>` : "";
+  return `
+<div class="layout-price-tag">
+  <div class="price-product">${escapeHtml(td.productName)}</div>
+  ${variantHtml}
+  <div class="price-hero-box shimmer-sweep-target">
+    <div class="price-amount">${escapeHtml(td.price)}</div>
+  </div>
+  ${noteHtml}
+</div>`.trim();
+}
+
+// ── IMAGE GALLERY SCENE (M3) ───────────────────────────────────────────────
+function renderImageGalleryInner(td: Extract<TemplateDataType, { template: "image-gallery" }>): string {
+  const titleHtml = td.title ? `<div class="gallery-title">${escapeHtml(td.title)}</div>` : "";
+  return `
+<div class="layout-image-gallery">
+  ${titleHtml}
+  <div class="gallery-items count-${td.images.length}">
+    ${td.images.map((img, idx) => `
+    <div class="gallery-card gallery-card-${idx}">
+      <img class="gallery-img" src="${escapeHtml(img.src)}" alt="" />
+      ${img.caption ? `<div class="gallery-caption">${escapeHtml(img.caption)}</div>` : ""}
+    </div>`).join("\n    ")}
+  </div>
+</div>`.trim();
+}
+
+// ── PHONE MOCKUP SCENE (M3) ────────────────────────────────────────────────
+function renderPhoneMockupInner(td: Extract<TemplateDataType, { template: "phone-mockup" }>): string {
+  const titleHtml = td.title ? `<div class="mockup-title">${escapeHtml(td.title)}</div>` : "";
+  const captionHtml = td.caption ? `<div class="mockup-caption">${escapeHtml(td.caption)}</div>` : "";
+  return `
+<div class="layout-phone-mockup">
+  ${titleHtml}
+  <div class="phone-frame">
+    <div class="phone-island"></div>
+    <div class="phone-screen">
+      <img class="phone-screen-img" src="${escapeHtml(td.screenSrc)}" alt="" />
+    </div>
+  </div>
+  ${captionHtml}
+</div>`.trim();
 }
 
 /**

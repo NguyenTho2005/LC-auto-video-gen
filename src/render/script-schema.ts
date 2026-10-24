@@ -51,6 +51,60 @@ const OutroData = z.object({
   source: z.string().min(1).max(40),
 });
 
+// ── Review Templates (M3) ──────────────────────────────────────────────────
+const SpecItem = z.object({
+  label: z.string().min(1).max(30),
+  value: z.string().min(1).max(40),
+});
+
+const SpecTableData = z.object({
+  template: z.literal("spec-table"),
+  productName: z.string().min(1).max(40),
+  specs: z.array(SpecItem).min(1).max(6),
+});
+
+const ProsConsData = z.object({
+  template: z.literal("pros-cons"),
+  title: z.string().min(1).max(40).optional(),
+  pros: z.array(z.string().min(1).max(50)).min(1).max(4),
+  cons: z.array(z.string().min(1).max(50)).min(1).max(4),
+});
+
+const VerdictScoreData = z.object({
+  template: z.literal("verdict-score"),
+  productName: z.string().min(1).max(40),
+  score: z.number().min(0).max(100),
+  scale: z.enum(["10", "100"]).default("10"),
+  verdict: z.string().min(1).max(30),
+  summary: z.string().min(1).max(80),
+});
+
+const PriceTagData = z.object({
+  template: z.literal("price-tag"),
+  productName: z.string().min(1).max(40),
+  price: z.string().min(1).max(30),
+  variant: z.string().max(40).optional(),
+  note: z.string().max(50).optional(),
+});
+
+const GalleryImage = z.object({
+  src: z.string().min(1),
+  caption: z.string().max(40).optional(),
+});
+
+const ImageGalleryData = z.object({
+  template: z.literal("image-gallery"),
+  title: z.string().min(1).max(40).optional(),
+  images: z.array(GalleryImage).min(1).max(3),
+});
+
+const PhoneMockupData = z.object({
+  template: z.literal("phone-mockup"),
+  title: z.string().min(1).max(40).optional(),
+  screenSrc: z.string().min(1),
+  caption: z.string().max(50).optional(),
+});
+
 export const TemplateData = z.discriminatedUnion("template", [
   HookData,
   ComparisonData,
@@ -58,6 +112,12 @@ export const TemplateData = z.discriminatedUnion("template", [
   FeatureListData,
   CalloutData,
   OutroData,
+  SpecTableData,
+  ProsConsData,
+  VerdictScoreData,
+  PriceTagData,
+  ImageGalleryData,
+  PhoneMockupData,
 ]);
 
 export type TemplateDataType = z.infer<typeof TemplateData>;

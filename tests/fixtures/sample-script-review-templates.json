@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 2,
+  "captions": {
+    "enabled": true,
+    "style": "tiktok-bold"
+  },
+  "metadata": {
+    "title": "Đánh giá chi tiết Flagship 2026",
+    "source": {
+      "url": "https://example.com/review-2026",
+      "domain": "example.com",
+      "image": null
+    },
+    "channel": "TechReview VN",
+    "useOgImage": false
+  },
+  "voice": {
+    "provider": "edge-tts",
+    "voiceId": "vi-VN-NamMinhNeural",
+    "speed": 1.0
+  },
+  "scenes": [
+    {
+      "id": "scene-1",
+      "type": "hook",
+      "voiceText": "Chiếc điện thoại toàn diện nhất năm 2026 liệu có xứng đáng với mức giá khủng?",
+      "templateData": {
+        "template": "hook",
+        "headline": "FLAGSHIP ĐỈNH NHẤT 2026?",
+        "subhead": "Đánh giá chi tiết sau một tuần"
+      }
+    },
+    {
+      "id": "scene-2",
+      "type": "body",
+      "voiceText": "Về mặt thông số kỹ thuật, máy sở hữu cấu hình mạnh mẽ hàng đầu hiện nay.",
+      "templateData": {
+        "template": "spec-table",
+        "productName": "SuperPhone Ultra 2026",
+        "specs": [
+          { "label": "Vi xử lý", "value": "Snapdragon 8 Elite Gen 2" },
+          { "label": "Màn hình", "value": "6.8 inch Dynamic AMOLED 120Hz" },
+          { "label": "Camera chính", "value": "200 megapixel OIS" },
+          { "label": "Pin & Sạc", "value": "5500 mAh sạc nhanh 100W" }
+        ]
+      }
+    },
+    {
+      "id": "scene-3",
+      "type": "body",
+      "voiceText": "Máy sở hữu nhiều ưu điểm vượt trội nhưng cũng có vài điểm cần cân nhắc.",
+      "templateData": {
+        "template": "pros-cons",
+        "title": "Ưu và Nhược điểm",
+        "pros": [
+          "Hiệu năng cực kỳ mượt mà",
+          "Thời lượng pin ấn tượng",
+          "Màn hình hiển thị tuyệt đẹp"
+        ],
+        "cons": [
+          "Cụm camera lồi khá nhiều",
+          "Trọng lượng tương đối nặng"
+        ]
+      }
+    },
+    {
+      "id": "scene-4",
+      "type": "body",
+      "voiceText": "Với số điểm chín phẩy hai trên mười, đây là thiết bị cao cấp rất đáng sở hữu.",
+      "templateData": {
+        "template": "verdict-score",
+        "productName": "SuperPhone Ultra 2026",
+        "score": 9.2,
+        "scale": "10",
+        "verdict": "Flagship xuất sắc",
+        "summary": "Chiếc điện thoại toàn diện nhất phân khúc cao cấp năm nay."
+      }
+    },
+    {
+      "id": "scene-5",
+      "type": "body",
+      "voiceText": "Mức giá chính hãng khởi điểm từ hai mươi chín triệu chín trăm nghìn đồng.",
+      "templateData": {
+        "template": "price-tag",
+        "productName": "SuperPhone Ultra 2026",
+        "price": "29.990.000đ",
+        "variant": "Phiên bản 12GB / 256GB",
+        "note": "Giá niêm yết tại các đại lý chính hãng"
+      }
+    },
+    {
+      "id": "scene-6",
+      "type": "body",
+      "voiceText": "Thiết kế mặt lưng kính mờ cùng khung viền titan mang lại vẻ đẹp sang trọng.",
+      "templateData": {
+        "template": "image-gallery",
+        "title": "Chi tiết thiết kế",
+        "images": [
+          { "src": "media/sample-1.jpg", "caption": "Khung viền titan" },
+          { "src": "media/sample-2.jpg", "caption": "Cụm camera sắc nét" }
+        ]
+      }
+    },
+    {
+      "id": "scene-7",
+      "type": "body",
+      "voiceText": "Giao diện hệ điều hành tối ưu mượt mà và trực quan trên màn hình lớn.",
+      "templateData": {
+        "template": "phone-mockup",
+        "title": "Giao diện thông minh",
+        "screenSrc": "media/screen-mockup.png",
+        "caption": "Màn hình tràn viền sắc nét"
+      }
+    },
+    {
+      "id": "scene-8",
+      "type": "outro",
+      "voiceText": "Đăng ký kênh TechReview VN để cập nhật những công nghệ mới nhất.",
+      "templateData": {
+        "template": "outro",
+        "ctaTop": "THEO DÕI ĐỂ XEM THÊM",
+        "channelName": "TechReview VN",
+        "source": "example.com"
+      }
+    }
+  ]
+}

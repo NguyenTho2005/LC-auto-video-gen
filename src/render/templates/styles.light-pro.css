@@ -742,3 +742,332 @@ html, body {
   color: #1e293b;
 }
 
+/* ── REVIEW TEMPLATES (M3) ──────────────────────────────────────────────── */
+
+/* Layout: spec-table */
+.layout-spec-table {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  padding: 220px 70px 380px;
+  box-sizing: border-box;
+}
+
+.spec-header {
+  font-family: 'Anton', 'Inter', sans-serif;
+  font-size: 68px; font-weight: 900;
+  color: #0f172a; text-align: center;
+  text-transform: uppercase; letter-spacing: -0.01em;
+  margin-bottom: 12px;
+  opacity: 0;
+  position: relative; overflow: hidden;
+}
+
+.spec-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 26px; font-weight: 700;
+  color: #2563eb; letter-spacing: 4px;
+  text-transform: uppercase; margin-bottom: 36px;
+  opacity: 0;
+}
+
+.spec-list {
+  width: 100%; display: flex; flex-direction: column; gap: 18px;
+}
+
+.spec-row {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #ffffff;
+  border: 2px solid rgba(226, 232, 240, 0.9);
+  border-radius: 18px; padding: 22px 34px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  opacity: 0;
+}
+
+.spec-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 34px; font-weight: 600;
+  color: #475569;
+}
+
+.spec-value {
+  font-family: 'Inter', sans-serif;
+  font-size: 38px; font-weight: 800;
+  color: #2563eb; text-align: right;
+  max-width: 550px;
+  word-break: break-word;
+}
+
+/* Layout: pros-cons */
+.layout-pros-cons {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  padding: 220px 60px 380px;
+  box-sizing: border-box;
+}
+
+.pros-cons-title {
+  font-family: 'Anton', 'Inter', sans-serif;
+  font-size: 64px; font-weight: 900;
+  color: #0f172a; text-align: center;
+  margin-bottom: 36px;
+  opacity: 0;
+}
+
+.pros-cons-grid {
+  display: flex; gap: 28px; width: 100%;
+}
+
+.pros-col, .cons-col {
+  flex: 1; display: flex; flex-direction: column; gap: 16px;
+  opacity: 0;
+}
+
+.pros-header {
+  font-family: 'Inter', sans-serif;
+  font-size: 30px; font-weight: 800;
+  color: #059669;
+  background: #ecfdf5;
+  border: 2px solid #a7f3d0;
+  border-radius: 16px; padding: 14px 18px;
+  text-align: center; letter-spacing: 2px;
+}
+
+.cons-header {
+  font-family: 'Inter', sans-serif;
+  font-size: 30px; font-weight: 800;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 2px solid #fecaca;
+  border-radius: 16px; padding: 14px 18px;
+  text-align: center; letter-spacing: 2px;
+}
+
+.pros-list, .cons-list {
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+.pro-item, .con-item {
+  display: flex; align-items: flex-start; gap: 14px;
+  background: #ffffff;
+  border-radius: 16px; padding: 18px 20px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.05);
+  opacity: 0;
+}
+
+.pro-item { border: 1.5px solid #a7f3d0; }
+.con-item { border: 1.5px solid #fecaca; }
+
+.pro-icon { color: #059669; font-size: 28px; font-weight: 900; line-height: 1.2; flex-shrink: 0; }
+.con-icon { color: #dc2626; font-size: 28px; font-weight: 900; line-height: 1.2; flex-shrink: 0; }
+
+.pro-text, .con-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 30px; font-weight: 600;
+  color: #0f172a; line-height: 1.35;
+  word-break: break-word;
+}
+
+/* Layout: verdict-score */
+.layout-verdict-score {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  padding: 220px 70px 380px;
+  box-sizing: border-box; text-align: center;
+}
+
+.verdict-product {
+  font-family: 'Anton', 'Inter', sans-serif;
+  font-size: 64px; font-weight: 900;
+  color: #0f172a; margin-bottom: 28px;
+  letter-spacing: -0.01em;
+  opacity: 0;
+}
+
+.verdict-score-badge {
+  position: relative; overflow: hidden;
+  display: flex; align-items: baseline; justify-content: center; gap: 12px;
+  background: linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(79,70,229,0.12) 100%);
+  border: 4px solid #2563eb;
+  border-radius: 40px; padding: 28px 75px;
+  box-shadow: 0 16px 40px rgba(37,99,235,0.18);
+  margin-bottom: 32px;
+  opacity: 0;
+}
+
+.score-number {
+  font-family: 'Anton', 'Inter', sans-serif;
+  font-size: 130px; font-weight: 900;
+  color: #0f172a; line-height: 1.0;
+}
+
+.score-scale {
+  font-family: 'Inter', sans-serif;
+  font-size: 48px; font-weight: 700;
+  color: #64748b;
+}
+
+.verdict-tag {
+  font-family: 'Inter', sans-serif;
+  font-size: 34px; font-weight: 800;
+  color: #854d0e;
+  background: #fef08a;
+  border: 2px solid #facc15;
+  border-radius: 50px; padding: 12px 40px;
+  letter-spacing: 2px; text-transform: uppercase;
+  margin-bottom: 28px;
+  opacity: 0;
+}
+
+.verdict-summary {
+  font-family: 'Inter', sans-serif;
+  font-size: 38px; font-weight: 500;
+  color: #334155;
+  line-height: 1.45; max-width: 900px;
+  opacity: 0;
+}
+
+/* Layout: price-tag */
+.layout-price-tag {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  padding: 220px 70px 380px;
+  box-sizing: border-box; text-align: center;
+}
+
+.price-product {
+  font-family: 'Anton', 'Inter', sans-serif;
+  font-size: 68px; font-weight: 900;
+  color: #0f172a; margin-bottom: 14px;
+  opacity: 0;
+}
+
+.price-variant {
+  font-family: 'Inter', sans-serif;
+  font-size: 34px; font-weight: 600;
+  color: #2563eb; margin-bottom: 32px;
+  opacity: 0;
+}
+
+.price-hero-box {
+  position: relative; overflow: hidden;
+  background: linear-gradient(135deg, rgba(219,39,119,0.08) 0%, rgba(147,51,234,0.1) 100%);
+  border: 3px solid #db2777;
+  border-radius: 36px; padding: 36px 65px;
+  box-shadow: 0 16px 40px rgba(219,39,119,0.18);
+  margin-bottom: 32px;
+  opacity: 0;
+}
+
+.price-amount {
+  font-family: 'Anton', 'Inter', sans-serif;
+  font-size: 100px; font-weight: 900;
+  color: #be185d;
+}
+
+.price-note {
+  font-family: 'Inter', sans-serif;
+  font-size: 32px; font-weight: 500;
+  color: #64748b;
+  opacity: 0;
+}
+
+/* Layout: image-gallery */
+.layout-image-gallery {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  padding: 220px 60px 380px;
+  box-sizing: border-box;
+}
+
+.gallery-title {
+  font-family: 'Anton', 'Inter', sans-serif;
+  font-size: 58px; font-weight: 900;
+  color: #0f172a; text-align: center;
+  margin-bottom: 32px;
+  opacity: 0;
+}
+
+.gallery-items {
+  display: flex; width: 100%; gap: 20px;
+  justify-content: center; align-items: center;
+}
+
+.gallery-items.count-1 { flex-direction: column; }
+.gallery-items.count-1 .gallery-card { width: 90%; max-height: 700px; }
+.gallery-items.count-2 { flex-direction: row; }
+.gallery-items.count-2 .gallery-card { flex: 1; max-height: 550px; }
+.gallery-items.count-3 { flex-direction: column; }
+.gallery-items.count-3 .gallery-card { width: 100%; max-height: 280px; }
+
+.gallery-card {
+  position: relative; border-radius: 20px; overflow: hidden;
+  border: 2px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+  opacity: 0;
+}
+
+.gallery-img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+
+.gallery-caption {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(0deg, rgba(15, 23, 42, 0.85) 0%, transparent 100%);
+  color: #fff; font-family: 'Inter', sans-serif;
+  font-size: 26px; font-weight: 600;
+  padding: 20px 16px 12px; text-align: center;
+}
+
+/* Layout: phone-mockup */
+.layout-phone-mockup {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  padding: 220px 60px 380px;
+  box-sizing: border-box;
+}
+
+.mockup-title {
+  font-family: 'Anton', 'Inter', sans-serif;
+  font-size: 56px; font-weight: 900;
+  color: #0f172a; text-align: center;
+  margin-bottom: 24px;
+  opacity: 0;
+}
+
+.phone-frame {
+  position: relative;
+  width: 440px; height: 860px;
+  background: #000;
+  border-radius: 54px;
+  border: 10px solid #1e293b;
+  box-shadow: 0 25px 60px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+  opacity: 0;
+}
+
+.phone-island {
+  position: absolute; top: 16px; left: 50%;
+  transform: translateX(-50%);
+  width: 110px; height: 26px;
+  background: #000; border-radius: 20px;
+  z-index: 10;
+}
+
+.phone-screen {
+  width: 100%; height: 100%;
+  overflow: hidden;
+}
+
+.phone-screen-img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+
+.mockup-caption {
+  font-family: 'Inter', sans-serif;
+  font-size: 30px; font-weight: 600;
+  color: #475569;
+  margin-top: 24px; text-align: center;
+  opacity: 0;
+}
+

@@ -50,6 +50,18 @@ window.__timelines["news-video"] = tl;
       animateCallout(scene, tl, start);
     } else if (layout === "outro") {
       animateOutro(scene, tl, start, dur);
+    } else if (layout === "spec-table") {
+      animateSpecTable(scene, tl, start);
+    } else if (layout === "pros-cons") {
+      animateProsCons(scene, tl, start);
+    } else if (layout === "verdict-score") {
+      animateVerdictScore(scene, tl, start);
+    } else if (layout === "price-tag") {
+      animatePriceTag(scene, tl, start);
+    } else if (layout === "image-gallery") {
+      animateImageGallery(scene, tl, start);
+    } else if (layout === "phone-mockup") {
+      animatePhoneMockup(scene, tl, start);
     }
   });
 
@@ -199,6 +211,126 @@ window.__timelines["news-video"] = tl;
       const holdEnd   = start + dur - 0.1;        // ends just before scene ends
       const holdLen   = Math.max(0.5, holdEnd - holdStart);
       tl.to(ttCard, { scale: 1.08, duration: holdLen }, holdStart);
+    }
+  }
+
+  // ── SPEC TABLE (M3) ───────────────────────────────────────────────────
+  function animateSpecTable(scene, tl, start) {
+    const header = scene.querySelector(".spec-header");
+    if (header) {
+      tl.fromTo(header, { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 }, start + 0.15);
+      const mask = header.querySelector(".shimmer-mask");
+      if (mask) {
+        tl.fromTo(mask, { x: "-120%" }, { x: "120%", duration: 0.9 }, start + 0.65);
+      }
+    }
+    const subtitle = scene.querySelector(".spec-subtitle");
+    if (subtitle) {
+      tl.fromTo(subtitle, { opacity: 0 }, { opacity: 1, duration: 0.4 }, start + 0.35);
+    }
+    const rows = scene.querySelectorAll(".spec-row");
+    rows.forEach((row, i) => {
+      tl.fromTo(row, { x: -40, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4 }, start + 0.5 + i * 0.12);
+    });
+  }
+
+  // ── PROS CONS (M3) ────────────────────────────────────────────────────
+  function animateProsCons(scene, tl, start) {
+    const title = scene.querySelector(".pros-cons-title");
+    if (title) {
+      tl.fromTo(title, { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 }, start + 0.15);
+    }
+    const prosCol = scene.querySelector(".pros-col");
+    if (prosCol) {
+      tl.fromTo(prosCol, { x: -60, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5 }, start + 0.3);
+    }
+    const consCol = scene.querySelector(".cons-col");
+    if (consCol) {
+      tl.fromTo(consCol, { x: 60, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5 }, start + 0.45);
+    }
+    const proItems = scene.querySelectorAll(".pro-item");
+    proItems.forEach((item, i) => {
+      tl.fromTo(item, { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.35 }, start + 0.55 + i * 0.1);
+    });
+    const conItems = scene.querySelectorAll(".con-item");
+    conItems.forEach((item, i) => {
+      tl.fromTo(item, { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.35 }, start + 0.7 + i * 0.1);
+    });
+  }
+
+  // ── VERDICT SCORE (M3) ────────────────────────────────────────────────
+  function animateVerdictScore(scene, tl, start) {
+    const prod = scene.querySelector(".verdict-product");
+    if (prod) {
+      tl.fromTo(prod, { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 }, start + 0.15);
+    }
+    const badge = scene.querySelector(".verdict-score-badge");
+    if (badge) {
+      tl.fromTo(badge, { scale: 0.3, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.55 }, start + 0.35);
+      const mask = badge.querySelector(".shimmer-mask");
+      if (mask) {
+        tl.fromTo(mask, { x: "-120%" }, { x: "120%", duration: 0.9 }, start + 0.85);
+      }
+    }
+    const tag = scene.querySelector(".verdict-tag");
+    if (tag) {
+      tl.fromTo(tag, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 }, start + 0.95);
+    }
+    const summary = scene.querySelector(".verdict-summary");
+    if (summary) {
+      tl.fromTo(summary, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45 }, start + 1.2);
+    }
+  }
+
+  // ── PRICE TAG (M3) ────────────────────────────────────────────────────
+  function animatePriceTag(scene, tl, start) {
+    const prod = scene.querySelector(".price-product");
+    if (prod) {
+      tl.fromTo(prod, { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 }, start + 0.15);
+    }
+    const variant = scene.querySelector(".price-variant");
+    if (variant) {
+      tl.fromTo(variant, { opacity: 0 }, { opacity: 1, duration: 0.35 }, start + 0.35);
+    }
+    const heroBox = scene.querySelector(".price-hero-box");
+    if (heroBox) {
+      tl.fromTo(heroBox, { scale: 0.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.55 }, start + 0.45);
+      const mask = heroBox.querySelector(".shimmer-mask");
+      if (mask) {
+        tl.fromTo(mask, { x: "-120%" }, { x: "120%", duration: 0.9 }, start + 0.95);
+      }
+    }
+    const note = scene.querySelector(".price-note");
+    if (note) {
+      tl.fromTo(note, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 }, start + 1.15);
+    }
+  }
+
+  // ── IMAGE GALLERY (M3) ────────────────────────────────────────────────
+  function animateImageGallery(scene, tl, start) {
+    const title = scene.querySelector(".gallery-title");
+    if (title) {
+      tl.fromTo(title, { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 }, start + 0.15);
+    }
+    const cards = scene.querySelectorAll(".gallery-card");
+    cards.forEach((card, i) => {
+      tl.fromTo(card, { y: 50, scale: 0.92, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.5 }, start + 0.35 + i * 0.18);
+    });
+  }
+
+  // ── PHONE MOCKUP (M3) ─────────────────────────────────────────────────
+  function animatePhoneMockup(scene, tl, start) {
+    const title = scene.querySelector(".mockup-title");
+    if (title) {
+      tl.fromTo(title, { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 }, start + 0.15);
+    }
+    const frame = scene.querySelector(".phone-frame");
+    if (frame) {
+      tl.fromTo(frame, { y: 150, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, start + 0.35);
+    }
+    const caption = scene.querySelector(".mockup-caption");
+    if (caption) {
+      tl.fromTo(caption, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 }, start + 0.85);
     }
   }
 

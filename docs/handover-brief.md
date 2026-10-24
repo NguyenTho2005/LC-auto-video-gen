@@ -2,7 +2,7 @@
 
 > **Dành cho AI Agent tiếp nhận dự án.**  
 > Ngày cập nhật: 24/10/2026.  
-> Trạng thái hiện tại: **Đã hoàn thành 100% Milestone M0 (Audit), M1 (Caption & SRT), M2 (Media thật)** trên nhánh `feat/m2-media`.
+> Trạng thái hiện tại: **Đã hoàn thành 100% Milestone M0 (Audit), M1 (Caption & SRT), M2 (Media thật), M3 (Template review & Themes)** trên nhánh `feat/m3-review-templates`.
 
 ---
 
@@ -106,43 +106,68 @@ AUTO_GEN_VIDEO/
 
 ---
 
-## 4. Trạng thái hiện tại của dự án
-
-- **Nhánh Git hiện tại:** `feat/m2-media`.
-- **Trạng thái mã nguồn:** 0 lỗi TypeScript, 86/86 tests Vitest passed.
-- **Tiêu chí chấp nhận M2:** Đạt 100%:
-  1. Cảnh có media hiển thị đúng 9:16 (`cover`/`contain`), hiệu ứng Ken Burns mượt không giật.
-  2. File `media.json` đầy đủ thông tin nguồn, tác giả, giấy phép.
-  3. Cờ `og:image` chỉ bật khi có yêu cầu rõ ràng, có cảnh báo bản quyền.
-  4. Script cũ không có media vẫn render bình thường (tương thích ngược hoàn toàn).
+### 3.5. Milestone M3 — Template review & Themes (nhánh `feat/m3-review-templates`)
+- **Mở rộng Schema Zod:** Bổ sung 6 templates mới vào `TemplateData` trong [`src/render/script-schema.ts`](../src/render/script-schema.ts) với validation chặt chẽ:
+  - `spec-table`: Tên sản phẩm + tối đa 6 dòng thông số (label/value).
+  - `pros-cons`: Hai cột ưu điểm (pros) và nhược điểm (cons), tối đa 4 ý/cột.
+  - `verdict-score`: Chấm điểm sản phẩm (0-10 hoặc 0-100), thang điểm, nhãn kết luận và câu tóm tắt.
+  - `price-tag`: Giá bán nổi bật, tên sản phẩm, biến thể và ghi chú đại lý.
+  - `image-gallery`: Trưng bày 1-3 hình ảnh sản phẩm kèm chú thích.
+  - `phone-mockup`: Khung điện thoại dọc 9:16 có dynamic island chứa ảnh screenshot ứng dụng/website.
+- **HTML Composer & GSAP Animation:**
+  - Viết 6 hàm render inner trong [`src/render/html-composer.ts`](../src/render/html-composer.ts).
+  - Cập nhật dispatcher và 6 hàm entrance animation trong [`src/render/templates/animations.js`](../src/render/templates/animations.js) với hiệu ứng stagger, scale pop-in, shimmer sweep.
+- **Styling hoàn chỉnh cho cả hai theme:**
+  - Cập nhật [`src/render/templates/styles.css`](../src/render/templates/styles.css) (dark-neon).
+  - Cập nhật [`src/render/templates/styles.light-pro.css`](../src/render/templates/styles.light-pro.css) (light-pro).
+  - Tôn trọng lề an toàn TikTok safe-zone và xử lý xuống dòng/cắt chữ tiếng Việt chuẩn xác.
+- **Cập nhật Skill Hướng dẫn AI Agent:**
+  - Cập nhật hướng dẫn lựa chọn template review trong [`.agents/skills/create-news-video/SKILL.md`](../.agents/skills/create-news-video/SKILL.md) và [`.claude/skills/create-news-video/SKILL.md`](../.claude/skills/create-news-video/SKILL.md).
+- **Kết quả nghiệm thu M3:**
+  - `npx tsc --noEmit`: 0 lỗi.
+  - `npm test`: 19 test files, **106/106 tests passed 100%** (bao gồm 20 tests mới cho Zod schema validation & render composer).
+  - Render video mẫu thực tế: `output/m3-sample/video.mp4` (149.1 MB, 40.4s, 1080×1920 30fps H.264, audio AAC stereo 48000Hz, ffprobe kiểm tra đạt chuẩn).
+  - Trích xuất 6 frame ảnh chụp mẫu độ phân giải 1080×1920 tại `output/m3-sample/frames/`.
 
 ---
 
-## 5. Bước tiếp theo cần làm ngay (Immediate Next Step: Milestone M3)
+## 4. Trạng thái hiện tại của dự án
 
-Nhiệm vụ tiếp theo là **Milestone M3 (Template review & Themes)** theo đúng prompt **P-M3** trong `PRD2.md` Mục B4:
+- **Nhánh Git hiện tại:** `feat/m3-review-templates`.
+- **Trạng thái mã nguồn:** 0 lỗi TypeScript, 106/106 tests Vitest passed.
+- **Tiêu chí chấp nhận M3:** Đạt 100%:
+  1. Thêm đủ 6 review template mới vào discriminated union, không đổi biến thể cũ.
+  2. Mỗi template render chuẩn xác với fixture ở cả hai theme dark-neon và light-pro.
+  3. Schema từ chối dữ liệu sai định dạng (số dòng spec > 6, pro/con > 4, ảnh > 3, điểm số ngoài thang đo) với thông báo lỗi rõ ràng.
+  4. Script cũ và template cũ giữ nguyên hành vi, không bị phá vỡ.
+
+---
+
+## 5. Bước tiếp theo cần làm ngay (Immediate Next Step: Milestone M4)
+
+Nhiệm vụ tiếp theo là **Milestone M4 (LLM trong code và duyệt kịch bản)** theo đúng prompt **P-M4** trong `PRD2.md` Mục B4:
 
 1. **Khởi tạo nhánh làm việc mới:**
    ```bash
-   git checkout -b feat/m3-review-templates
+   git checkout -b feat/m4-llm-script
    ```
 2. **Kỹ năng bắt buộc phải đọc trước:**
-   - [`.agents/skills/hyperframes-templates/SKILL.md`](../.agents/skills/hyperframes-templates/SKILL.md)
-   - [`.agents/skills/schema-evolution/SKILL.md`](../.agents/skills/schema-evolution/SKILL.md)
+   - [`.agents/skills/llm-script/SKILL.md`](../.agents/skills/llm-script/SKILL.md)
    - [`.agents/skills/qa-verify/SKILL.md`](../.agents/skills/qa-verify/SKILL.md)
-3. **Các hạng mục cần làm ở M3:**
-   - Bổ sung 6 templates mới vào discriminated union trong `src/render/script-schema.ts`:
-     - `spec-table`: Tên sản phẩm + tối đa 6 dòng thông số (nhãn/giá trị).
-     - `pros-cons`: Hai cột ưu/nhược (mỗi cột tối đa 4 ý).
-     - `verdict-score`: Điểm (0–10 hoặc 0–100), nhãn kết luận, 1 câu tóm tắt.
-     - `price-tag`: Giá, phiên bản/biến thể, ghi chú nơi bán.
-     - `image-gallery`: 1–3 ảnh sản phẩm, chú thích.
-     - `phone-mockup`: Ảnh/screenshot đặt trong khung điện thoại.
-   - Viết HTML composer, timeline GSAP animation, CSS cho cả hai theme (`styles.css` và `styles.light-pro.css`).
-   - Cập nhật skill `create-news-video` để LLM biết khi nào chọn template mới.
-   - Thêm fixture mẫu trong `tests/fixtures/`.
-   - Viết test Vitest và kiểm tra chụp frame kiểm chứng ở cả hai theme.
+3. **Các hạng mục cần làm ở M4:**
+   - Xây dựng `LLMProvider` interface với:
+     - `AnthropicProvider` (Claude 3.5 Sonnet / Haiku).
+     - `OpenAiProvider` (OpenAI hoặc tương thích OpenAI như Groq, DeepSeek).
+     - `FakeLLMProvider` cho kiểm thử tự động không gọi mạng.
+   - Viết lệnh CLI sinh kịch bản:
+     ```bash
+     npm run script -- <url|file.md|"chủ đề"> --preset <news_short|review_60|top_list> --out <thư mục>
+     ```
+   - Trích xuất nội dung nguồn từ URL web hoặc file.
+   - Prompt hệ thống tiếng Việt tối ưu trong `src/script/prompts/` (chỉ dùng thông tin trong nguồn, hook 3s đầu, văn nói, số tự chuyển sang dạng đọc).
+   - Kiểm tra và xác minh số liệu: So khớp mọi con số trong `voiceText`/`templateData` với văn bản nguồn, tự động gắn cờ cảnh báo số lạ trong `script.review.md`.
+   - Cơ chế duyệt kịch bản: `npm run script` dừng lại sau khi tạo `script.json` và `script.review.md` để người dùng kiểm duyệt trước khi chạy render pipeline (hỗ trợ cờ `--yes` để bỏ qua bước dừng khi chạy tự động).
 4. **Quy trình nghiệm thu:**
-   - Chạy `npx tsc --noEmit` và `npm test`.
-   - Render video mẫu và kiểm tra thông số bằng `ffprobe`.
+   - Chạy `npx tsc --noEmit` và `npm test` (test retry khi LLM trả JSON sai, test gắn cờ số bịa).
+   - Kiểm tra kịch bản sinh ra hợp lệ với `ScriptSchema`.
    - Cập nhật tiếp vào `docs/handover-brief.md`.
