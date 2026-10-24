@@ -82,6 +82,15 @@ export function composeHtml(args: ComposeArgs): string {
     captionsHtml = renderCaptions(args.captionCues, style);
   }
 
+  // Render optional safe-zone overlay (M5)
+  const safeZoneHtml = script.metadata.safeZoneOverlay
+    ? `<div id="safe-zone-overlay">
+  <div class="safe-zone-guide-label top">TOP SAFE (150px)</div>
+  <div class="safe-zone-guide-label right">ACTIONS SAFE (120px)</div>
+  <div class="safe-zone-guide-label bottom">TIKTOK CAPTION SAFE-ZONE (380px)</div>
+</div>`
+    : "";
+
   const animJs = readFileSync(join(TPL_DIR, "animations.js"), "utf8");
 
   const tpl = readFileSync(join(TPL_DIR, "base.html.tmpl"), "utf8");
@@ -90,7 +99,7 @@ export function composeHtml(args: ComposeArgs): string {
     .replace(/\{\{TOTAL_DURATION\}\}/g, totalDuration.toFixed(2))
     .replace("{{SHELL}}", shellHtml)
     .replace("{{SCENES}}", sceneHtml)
-    .replace("{{CAPTIONS}}", captionsHtml)
+    .replace("{{CAPTIONS}}", captionsHtml + safeZoneHtml)
     .replace(/src="voice\.mp3"/g, `src="${audioRelPath}"`)
     .replace('<script src="animations.js"></script>', `<script>\n${animJs}\n</script>`);
 }
@@ -493,10 +502,15 @@ function buildScene(
     ? `<div class="media-credit-badge">Nguồn: ${escapeHtml(mediaRecord.credit)}</div>`
     : "";
 
+  const transType = scene.transition?.type || "cut";
+  const transDur = scene.transition?.duration ?? 0.3;
+
   return `
 <div class="scene clip" id="scene-${scene.id}"
      data-start="${start.toFixed(2)}" data-duration="${duration.toFixed(2)}" data-active="0"
-     data-layout="${layoutName}">
+     data-layout="${layoutName}"
+     data-transition="${transType}"
+     data-transition-duration="${transDur.toFixed(2)}">
   ${mediaHtml}
   ${innerHtml}
   ${creditHtml}

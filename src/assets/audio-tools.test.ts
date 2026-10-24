@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { getDurationSec, concatWithSilence } from "./audio-tools.js";
+import { getDurationSec, concatWithSilence, mixBgmWithVoice } from "./audio-tools.js";
 
 let tmp: string;
 beforeEach(() => { tmp = mkdtempSync(join(tmpdir(), "aud-")); });
@@ -29,5 +29,25 @@ describe("concatWithSilence", () => {
     // 2s + 0.3s + 3s = 5.3s, allow ±0.3s
     expect(d).toBeGreaterThan(5.0);
     expect(d).toBeLessThan(5.6);
+  });
+});
+
+describe("mixBgmWithVoice", () => {
+  it("mixes BGM with voice and applies ducking", async () => {
+    const voice = "tests/fixtures/sample-audio-1.mp3";
+    const bgm = "assets/bgm/ambient-tech.mp3";
+    const out = join(tmp, "voice-with-bgm.mp3");
+
+    await mixBgmWithVoice(voice, bgm, out, {
+      volume: 0.2,
+      duck: true,
+      duckVolume: 0.05,
+    });
+
+    expect(existsSync(out)).toBe(true);
+    const voiceDur = await getDurationSec(voice);
+    const outDur = await getDurationSec(out);
+    // Duration should match voice duration (within 0.2s)
+    expect(Math.abs(outDur - voiceDur)).toBeLessThan(0.2);
   });
 });

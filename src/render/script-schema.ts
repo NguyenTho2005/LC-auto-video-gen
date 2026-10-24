@@ -153,6 +153,22 @@ export const MediaSpec = z.object({
 
 export type MediaSpecType = z.infer<typeof MediaSpec>;
 
+// ── Transition schema (M5) ─────────────────────────────────────────────────
+export const TransitionSpec = z.object({
+  type: z.enum(["cut", "fade", "slide", "zoom"]).default("cut"),
+  duration: z.number().min(0).max(2).default(0.3),
+});
+export type TransitionSpecType = z.infer<typeof TransitionSpec>;
+
+// ── BGM schema (M5) ────────────────────────────────────────────────────────
+export const BgmSpec = z.object({
+  src: z.string().min(1),
+  volume: z.number().min(0).max(1).optional().default(0.18),
+  duck: z.boolean().optional().default(true),
+  duckVolume: z.number().min(0).max(1).optional().default(0.06),
+});
+export type BgmSpecType = z.infer<typeof BgmSpec>;
+
 // ── Scene schema ───────────────────────────────────────────────────────────
 
 const Scene = z.object({
@@ -164,6 +180,8 @@ const Scene = z.object({
   sfx: SfxSpec.optional(),
   /** Optional media asset (image/video/screenshot) for this scene (M2) */
   media: MediaSpec.optional(),
+  /** Optional scene transition (cut, fade, slide, zoom) (M5) */
+  transition: TransitionSpec.optional(),
 });
 
 // ── Caption schema (M1) ────────────────────────────────────────────────────
@@ -180,6 +198,8 @@ export const ScriptSchema = z.object({
   version: z.string().optional(),
   schemaVersion: z.union([z.literal(1), z.literal(2)]).optional(),
   captions: CaptionOptions.optional(),
+  bgm: BgmSpec.optional(),
+  preset: z.enum(["short_30", "news_45", "review_60"]).optional(),
   metadata: z.object({
     title: z.string().min(1),
     source: z.object({
@@ -190,6 +210,8 @@ export const ScriptSchema = z.object({
     channel: z.string().min(1),
     /** Explicit flag to allow using og:image (default false) */
     useOgImage: z.boolean().optional(),
+    /** Optional grid overlay for TikTok safe zone preview (M5) */
+    safeZoneOverlay: z.boolean().optional(),
   }),
   voice: z.object({
     provider: z.string().min(1),

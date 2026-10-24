@@ -201,3 +201,65 @@ export async function mixSfxOntoVoice(
 
   await run("ffmpeg", ffArgs);
 }
+
+export interface BgmMixOptions {
+  /** Base volume for BGM (0 to 1, default 0.18) */
+  volume?: number;
+  /** Whether to duck BGM when voice is active (default true) */
+  duck?: boolean;
+  /** Ducked volume when speech is active (default 0.06) */
+  duckVolume?: number;
+}
+
+/**
+ * Mixes background music (BGM) with voice audio.
+ * - Loops BGM seamlessly if voice duration is longer than BGM
+ * - Fades in at start (1.0s) and fades out at end (1.5s)
+ * - If duck is true: applies sidechain compression / ducking so BGM dips down when voice plays
+ * - Matches exact voice audio duration
+ */
+export async function mixBgmWithVoice(
+  voicePath: string,
+  bgmPath: string,
+  outPath: string,
+  opts: BgmMixOptions = {},
+): Promise<void> {
+  const baseVolume = opts.volume ?? 0.18;
+  const duck = opts.duck ?? true;
+
+  const totalDur = await getDurationSec(voicePath);
+  const fadeOutStart = Math.max(0, totalDur - 1.5);
+
+  const ffArgs: string[] = [
+    "-y",
+    "-i", voicePath,
+    "-stream_loop", "-1",
+    "-i", bgmPath,
+  ];
+
+  let filterGraph: string;
+  if (duck) {
+    filterGraph = [
+      `[1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,volume=${baseVolume},afade=t=in:st=0:d=1.0,afade=t=out:st=${fadeOutStart.toFixed(2)}:d=1.5[bgm_raw]`,
+      `[0:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,asplit=2[voice_main][voice_side]`,
+      `[bgm_raw][voice_side]sidechaincompress=threshold=0.03:ratio=5:attack=50:release=350[bgm_ducked]`,
+      `[voice_main][bgm_ducked]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[out]`,
+    ].join(";");
+  } else {
+    filterGraph = [
+      `[1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,volume=${baseVolume},afade=t=in:st=0:d=1.0,afade=t=out:st=${fadeOutStart.toFixed(2)}:d=1.5[bgm_raw]`,
+      `[0:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo[voice_raw]`,
+      `[voice_raw][bgm_raw]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[out]`,
+    ].join(";");
+  }
+
+  ffArgs.push(
+    "-filter_complex", filterGraph,
+    "-map", "[out]",
+    "-t", totalDur.toFixed(2),
+    "-c:a", "libmp3lame", "-b:a", "192k", "-ar", "44100",
+    outPath,
+  );
+
+  await run("ffmpeg", ffArgs);
+}

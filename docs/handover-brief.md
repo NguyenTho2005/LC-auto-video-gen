@@ -2,7 +2,7 @@
 
 > **Dành cho AI Agent tiếp nhận dự án.**  
 > Ngày cập nhật: 24/10/2026.  
-> Trạng thái hiện tại: **Đã hoàn thành 100% Milestone M0 (Audit), M1 (Caption & SRT), M2 (Media thật), M3 (Template review & Themes), M4 (LLM Script & Duyệt kịch bản)** trên nhánh `feat/m4-llm-script`.
+> Trạng thái hiện tại: **Đã hoàn thành 100% Milestone M0 (Audit), M1 (Caption & SRT), M2 (Media thật), M3 (Template review & Themes), M4 (LLM Script & Duyệt kịch bản), M5 (Audio polish, motion, preset)** trên nhánh `feat/m5-audio-motion`.
 
 ---
 
@@ -153,39 +153,67 @@ AUTO_GEN_VIDEO/
   - `npm test`: 22 test files, **125/125 tests passed 100%** (thêm 19 tests cho LLM providers, fact checker, và generator pipeline).
   - Chạy thử nghiệm CLI: `LLM_PROVIDER=fake npm run script` hoạt động chuẩn xác, sinh đầy đủ 3 file và hiển thị cảnh báo số liệu chuẩn xác.
 
+### 3.7. Milestone M5 — Audio polish, motion, preset (nhánh `feat/m5-audio-motion`)
+- **BGM với Ducking chuyên nghiệp (`src/assets/audio-tools.ts`):**
+  - Bổ sung schema `bgm` vào `ScriptSchema` (`src`, `volume`, `duck`, `duckVolume`).
+  - Hàm `mixBgmWithVoice` sử dụng filter FFmpeg `sidechaincompress` và `asplit` để tự động dìm âm lượng nhạc nền khi có giọng nói và đẩy âm lượng BGM trở lại khi có khoảng nghỉ; tự động lặp seamless loop và fade in 1s / fade out 1.5s theo đúng thời lượng video.
+  - Thư mục `assets/bgm/` kèm tài liệu bản quyền và file mẫu `ambient-tech.mp3` (CC0).
+- **Từ điển phát âm Lexicon (`config/lexicon.json` & `src/tts/lexicon.ts`):**
+  - Tự động thay thế từ vựng theo ranh giới nguyên từ (`\b`) với thuật toán single-pass regex sắp xếp độ dài giảm dần, triệt tiêu hoàn toàn lỗi cascading replacement (ví dụ "iPhone" -> "ai phôn", không bị "AI" biến thành "ây ai phôn").
+  - Áp dụng vào `voiceText` ngay trước khi gọi TTS, giữ nguyên chữ hiển thị gốc trên màn hình và caption.
+- **Chuyển cảnh động linh hoạt (Transitions):**
+  - Bổ sung schema `transition` (`cut`, `fade`, `slide`, `zoom`, `duration`) cho từng cảnh trong `Scene`.
+  - Mặc định giữ `cut` (hard cut) đảm bảo tương thích ngược 100%.
+  - Tích hợp GSAP animation timeline trong `src/render/templates/animations.js` và `data-transition` trong `html-composer.ts`.
+- **Preset độ dài video:**
+  - Hỗ trợ các preset `short_30` (25–38s), `news_45` (38–55s), `review_60` (55–75s).
+  - Tự động cảnh báo (không crash) khi thời lượng tổng thể ngoài khoảng mục tiêu.
+- **TikTok Safe-zone & Branding cấu hình:**
+  - Lớp phủ lưới safe-zone TikTok (`#safe-zone-overlay`) hiển thị lề trên (150px), lề dưới caption (380px), lề phải nút tương tác (120px) cho cả hai theme.
+  - Cấu hình branding qua `config/brand.json` (tên kênh, handle, avatar, theme, safe-zone).
+- **Kết quả nghiệm thu M5:**
+  - `npx tsc --noEmit`: 0 lỗi.
+  - `npm test`: 24 test files, **134/134 tests passed 100%**.
+  - Render video mẫu thực tế: `output/m5-sample/video.mp4` (96.8 MB, 25.8s, 1080×1920 30fps H.264, audio AAC stereo với BGM ducking, ffprobe kiểm tra đạt chuẩn).
+
 ---
 
 ## 4. Trạng thái hiện tại của dự án
 
-- **Nhánh Git hiện tại:** `feat/m4-llm-script`.
-- **Trạng thái mã nguồn:** 0 lỗi TypeScript, 125/125 tests Vitest passed.
-- **Tiêu chí chấp nhận M4:** Đạt 100%:
-  1. Chạy `npm run script` với `FakeLLMProvider` sinh `script.json` hợp lệ đạt chuẩn `ScriptSchema`.
-  2. Cơ chế retry hoạt động ổn định khi LLM trả JSON sai cấu trúc.
-  3. Số bịa đặt không có trong bài viết gốc bị hệ thống phát hiện và gắn cờ cảnh báo trong `script.review.md`.
-  4. Tuyệt đối không có API key xuất hiện trong console hay log.
+- **Nhánh Git hiện tại:** `feat/m5-audio-motion`.
+- **Trạng thái mã nguồn:** 0 lỗi TypeScript, 134/134 tests Vitest passed.
+- **Tiêu chí chấp nhận M5:** Đạt 100%:
+  1. Video có BGM nghe rõ ràng với cơ chế ducking tự động theo giọng nói (kiểm tra bằng ffmpeg/ffprobe trong test tích hợp).
+  2. Lexicon phát âm hoạt động chính xác với unit tests, không làm sai lệch hiển thị chữ trên màn hình.
+  3. Chuyển cảnh `cut`, `fade`, `slide`, `zoom` hoạt động trơn tru.
+  4. Preset độ dài kiểm tra dung sai hợp lý, kịch bản cũ không bị ảnh hưởng.
 
 ---
 
-## 5. Bước tiếp theo cần làm ngay (Immediate Next Step: Milestone M5)
+## 5. Bước tiếp theo cần làm ngay (Immediate Next Step: Milestone M6)
 
-Nhiệm vụ tiếp theo là **Milestone M5 (Audio polish, motion, preset)** theo đúng prompt **P-M5** trong `PRD2.md` Mục B4:
+Nhiệm vụ tiếp theo là **Milestone M6 (Web UI và timeline editor)** theo đúng prompt **P-M6** trong `PRD2.md` Mục B4:
 
 1. **Khởi tạo nhánh làm việc mới:**
    ```bash
-   git checkout -b feat/m5-audio-motion
+   git checkout -b feat/m6-web-ui
    ```
 2. **Kỹ năng bắt buộc phải đọc trước:**
-   - [`.agents/skills/audio-polish/SKILL.md`](../.agents/skills/audio-polish/SKILL.md)
-   - [`.agents/skills/hyperframes-templates/SKILL.md`](../.agents/skills/hyperframes-templates/SKILL.md)
+   - [`.agents/skills/web-timeline-editor/SKILL.md`](../.agents/skills/web-timeline-editor/SKILL.md)
    - [`.agents/skills/qa-verify/SKILL.md`](../.agents/skills/qa-verify/SKILL.md)
-3. **Các hạng mục cần làm ở M5:**
-   - **BGM & Ducking:** Trường `bgm` (`src`, `volume`, `duck`) trong `script.json`. Tự động lặp/cắt theo độ dài video, fade in/out và tự động ducking (giảm âm lượng BGM khi có giọng nói qua FFmpeg `sidechaincompress`). Thư mục `assets/bgm/` kèm nhạc mẫu miễn phí bản quyền.
-   - **Từ điển phát âm (Lexicon):** File `config/lexicon.json` (ví dụ `"iPhone": "ai phôn"`), áp dụng tự động vào `voiceText` trước khi gọi TTS. Không thay đổi chữ hiển thị trên màn hình.
-   - **Chuyển cảnh (Transitions):** Trường `transition` mỗi cảnh (`cut` mặc định, `fade`, `slide`, `zoom`, kèm `duration`). Giữ mặc định `cut` để tương thích ngược.
-   - **Preset độ dài:** `short_30`, `news_45`, `review_60` (số cảnh, số từ mục tiêu, khoảng thời lượng cảnh báo).
-   - **TikTok Safe-zone & Branding:** Cấu hình lề an toàn TikTok cho caption/nội dung quan trọng; cấu hình branding trong `config/brand.json` (tên kênh, handle, avatar, màu, theme) thay cho giá trị tác giả gốc.
+3. **Các hạng mục cần làm ở M6:**
+   - **Bước 1: Viết `docs/adr-ui.md`:** Chốt kiến trúc công nghệ cho Web UI (Frontend nhẹ: Vite + React hoặc HTML5/Tailwind/ESM, Backend: Server Express local `src/server.ts` tái sử dụng toàn bộ core pipeline).
+   - **Mô hình Timeline Core (Headless Timeline Model):**
+     - Đặt tại `src/timeline/`: Các track Clip, Voice, BGM, Caption.
+     - Thao tác: trim, split, delete, move, snap, zoom.
+     - Command pattern với Undo / Redo stack đầy đủ (có unit tests độc lập không phụ thuộc UI).
+     - Hàm migrate schema v1 -> v2 (`script.json` schemaVersion: 2 với khối `timeline`).
+   - **Web UI & Preview:**
+     - Xem trước composition trực tiếp trong trình duyệt bằng HTML iframe và đồng bộ GSAP timeline.
+     - Các nút chức năng: Sửa kịch bản/template từng cảnh, chọn media, chọn theme, chỉnh BGM/caption.
+     - Nút "Tạo lại giọng" cho từng cảnh (re-TTS idempotent).
+     - Nút "Render Video" có thanh tiến độ và log trực tiếp từ server.
 4. **Quy trình nghiệm thu:**
-   - Chạy `npx tsc --noEmit` và `npm test`.
-   - Render video mẫu có BGM và kiểm tra mức âm lượng bằng `ffprobe`/`ffmpeg`.
+   - Chạy `npx tsc --noEmit` và `npm test` (unit tests cho Timeline Model + Undo/Redo + Migrate v1->v2).
+   - Kiểm tra server khởi động và API hoạt động ổn định.
    - Cập nhật tiếp vào `docs/handover-brief.md`.

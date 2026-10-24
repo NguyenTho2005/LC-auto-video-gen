@@ -1043,3 +1043,25 @@ html, body {
   opacity: 0;
 }
 
+/* ── SAFE-ZONE OVERLAY (M5) ─────────────────────────────────────────────── */
+#safe-zone-overlay {
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 999;
+  border-top: 150px solid rgba(239, 68, 68, 0.18);
+  border-bottom: 380px solid rgba(239, 68, 68, 0.25);
+  border-right: 120px solid rgba(239, 68, 68, 0.18);
+  border-left: 50px solid rgba(239, 68, 68, 0.10);
+  box-sizing: border-box;
+}
+
+.safe-zone-guide-label {
+  position: absolute;
+  font-family: 'Inter', sans-serif;
+  font-size: 22px; font-weight: 800;
+  color: #ef4444; letter-spacing: 2px;
+}
+
+.safe-zone-guide-label.top { top: -110px; left: 60px; }
+.safe-zone-guide-label.right { right: -90px; top: 50%; transform: rotate(90deg); transform-origin: center; }
+.safe-zone-guide-label.bottom { bottom: -240px; left: 50%; transform: translateX(-50%); }
+

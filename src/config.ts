@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { config as dotenvConfig } from "dotenv";
 dotenvConfig({ path: ".env.local" });
 dotenvConfig();
@@ -51,6 +53,9 @@ export interface Config {
 
   /** Visual template — selects which styles.<theme>.css file gets used. */
   videoTheme: VideoTheme;
+
+  /** Optional TikTok safe zone overlay preview (M5) */
+  safeZoneOverlay: boolean;
 }
 
 function intDefault(name: string, def: number): number {
@@ -131,6 +136,15 @@ export function loadConfig(): Config {
     throw new Error(`VIDEO_THEME must be "dark-neon" or "light-pro", got "${videoTheme}"`);
   }
 
+  // Load branding config from config/brand.json if available (M5)
+  let brandData: any = {};
+  const brandPath = join(process.cwd(), "config", "brand.json");
+  if (existsSync(brandPath)) {
+    try {
+      brandData = JSON.parse(readFileSync(brandPath, "utf8"));
+    } catch {}
+  }
+
   return {
     ttsProvider: provider,
     edgeTtsVoice: process.env.EDGE_TTS_VOICE ?? "vi-VN-HoaiMyNeural",
@@ -154,12 +168,18 @@ export function loadConfig(): Config {
     vbeePollIntervalMs: intDefault("VBEE_POLL_INTERVAL_MS", 2000),
     vbeePollTimeoutMs: intDefault("VBEE_POLL_TIMEOUT_MS", 60000),
     tiktok: {
-      displayName: process.env.TIKTOK_DISPLAY_NAME || "DevPeek36",
-      handle: process.env.TIKTOK_HANDLE || "@devpeek36",
-      followers: process.env.TIKTOK_FOLLOWERS || "",
-      avatarUrl: process.env.TIKTOK_AVATAR_URL || undefined,
+      displayName: process.env.TIKTOK_DISPLAY_NAME || brandData.channelName || brandData.displayName || "DevPeek36",
+      handle: process.env.TIKTOK_HANDLE || brandData.handle || "@devpeek36",
+      followers: process.env.TIKTOK_FOLLOWERS || brandData.followers || "",
+      avatarUrl: process.env.TIKTOK_AVATAR_URL || brandData.avatarUrl || brandData.avatar || undefined,
     },
     ttsConcurrency: intDefault("TTS_CONCURRENCY", 1),
-    videoTheme,
+    videoTheme: (process.env.VIDEO_THEME || brandData.theme || videoTheme) as VideoTheme,
+    safeZoneOverlay: Boolean(
+      process.env.SAFE_ZONE_OVERLAY === "1" ||
+      process.env.SAFE_ZONE_OVERLAY === "true" ||
+      brandData.safeZoneOverlay ||
+      false
+    ),
   };
 }

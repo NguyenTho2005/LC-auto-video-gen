@@ -28,8 +28,19 @@ window.__timelines["news-video"] = tl;
     const dur   = parseFloat(scene.dataset.duration);
     const layout = scene.dataset.layout;
 
-    // Scene visibility: fade in/out
-    tl.set(scene, { opacity: 1 }, start);
+    // Scene visibility & transition (M5)
+    const transType = scene.dataset.transition || "cut";
+    const transDur  = parseFloat(scene.dataset.transitionDuration || "0.3");
+
+    if (transType === "fade") {
+      tl.fromTo(scene, { opacity: 0 }, { opacity: 1, duration: transDur }, start);
+    } else if (transType === "slide") {
+      tl.fromTo(scene, { x: 1080, opacity: 1 }, { x: 0, opacity: 1, duration: transDur }, start);
+    } else if (transType === "zoom") {
+      tl.fromTo(scene, { scale: 1.15, opacity: 0 }, { scale: 1.0, opacity: 1, duration: transDur }, start);
+    } else {
+      tl.set(scene, { opacity: 1 }, start);
+    }
     tl.set(scene, { opacity: 0 }, start + dur);
 
     // Ken Burns animation for scene media (M2)

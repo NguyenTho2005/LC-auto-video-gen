@@ -6,7 +6,7 @@ import { ScriptSchema, type Script } from "./render/script-schema.js";
 import { loadConfig } from "./config.js";
 import { createTtsClient } from "./tts/tts-client.js";
 import { fetchImage } from "./assets/image-fetcher.js";
-import { getDurationSec, concatWithSilence, mixSfxOntoVoice, type SfxMixSpec } from "./assets/audio-tools.js";
+import { getDurationSec, concatWithSilence, mixSfxOntoVoice, mixBgmWithVoice, type SfxMixSpec } from "./assets/audio-tools.js";
 import { indexSfxLibrary, pickSfxForScene, defaultPlayback } from "./assets/sfx-selector.js";
 import { existsSync } from "node:fs";
 import { composeHtml } from "./render/html-composer.js";
@@ -18,6 +18,7 @@ import { estimateWordTimings } from "./captions/estimator.js";
 import type { TimedWord, CaptionCue } from "./captions/types.js";
 import { processSceneMedia } from "./media/media-manager.js";
 import { PexelsProvider, PixabayProvider } from "./media/stock-provider.js";
+import { applyLexicon } from "./tts/lexicon.js";
 
 const TOTAL_STEPS = 8;
 const DURATION_MIN_SEC = 48;
@@ -127,8 +128,9 @@ export async function runPipeline(scriptPath: string): Promise<void> {
         return { id: scene.id, path: out, durationSec: dur, words, accuracy };
       }
 
-      log.info(`  TTS scene ${scene.id} (${scene.voiceText.length} chars)...`);
-      const timing = await ttsClient.generate(scene.voiceText, out, srtOut);
+      const spokenText = applyLexicon(scene.voiceText);
+      log.info(`  TTS scene ${scene.id} (${spokenText.length} chars)...`);
+      const timing = await ttsClient.generate(spokenText, out, srtOut);
       const dur = await getDurationSec(out);
       log.info(`  scene ${scene.id}: ${dur.toFixed(2)}s`);
 
@@ -232,10 +234,49 @@ export async function runPipeline(scriptPath: string): Promise<void> {
   log.info(`  mixing ${sfxList.length} SFX into voice.mp3`);
   await mixSfxOntoVoice(voiceRawMp3, sfxList, voiceMp3);
 
+  // STEP 5.1 (M5): Mix Background Music (BGM) with ducking
+  if (script.bgm?.src) {
+    let bgmFile = script.bgm.src;
+    if (!existsSync(bgmFile)) {
+      const candidate = join(process.cwd(), bgmFile);
+      if (existsSync(candidate)) bgmFile = candidate;
+    }
+    if (existsSync(bgmFile)) {
+      const vol = script.bgm.volume ?? 0.18;
+      const duck = script.bgm.duck ?? true;
+      const duckVol = script.bgm.duckVolume ?? 0.06;
+      log.info(`  mixing BGM: ${script.bgm.src} (vol=${vol}, duck=${duck})`);
+      const tempMixed = join(outputDir, "voice-before-bgm.mp3");
+      await copyFile(voiceMp3, tempMixed);
+      await mixBgmWithVoice(tempMixed, bgmFile, voiceMp3, {
+        volume: vol,
+        duck,
+        duckVolume: duckVol,
+      });
+    } else {
+      log.warn(`  BGM file not found: ${script.bgm.src} — skipping BGM`);
+    }
+  }
+
   const totalAudioSec = await getDurationSec(voiceMp3);
   log.info(`  voice.mp3 total: ${totalAudioSec.toFixed(2)}s`);
-  if (totalAudioSec < DURATION_MIN_SEC || totalAudioSec > DURATION_MAX_SEC) {
-    log.warn(`Total duration ${totalAudioSec.toFixed(1)}s outside [${DURATION_MIN_SEC}, ${DURATION_MAX_SEC}]s tolerance — proceeding anyway`);
+
+  // Preset duration tolerance check (M5)
+  let minTolerance = DURATION_MIN_SEC;
+  let maxTolerance = DURATION_MAX_SEC;
+  if (script.preset === "short_30") {
+    minTolerance = 25;
+    maxTolerance = 38;
+  } else if (script.preset === "news_45") {
+    minTolerance = 38;
+    maxTolerance = 55;
+  } else if (script.preset === "review_60") {
+    minTolerance = 55;
+    maxTolerance = 75;
+  }
+
+  if (totalAudioSec < minTolerance || totalAudioSec > maxTolerance) {
+    log.warn(`Total duration ${totalAudioSec.toFixed(1)}s outside preset [${minTolerance}, ${maxTolerance}]s tolerance — proceeding anyway`);
   }
 
   // Build global captions (M1)
@@ -280,6 +321,10 @@ export async function runPipeline(scriptPath: string): Promise<void> {
     }
   } else {
     await copyFile(bundledAvatar, ttAvatarOut);
+  }
+
+  if (cfg.safeZoneOverlay && script.metadata.safeZoneOverlay === undefined) {
+    script.metadata.safeZoneOverlay = true;
   }
 
   const html = composeHtml({
