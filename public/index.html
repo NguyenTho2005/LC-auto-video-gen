@@ -366,6 +366,18 @@
 
     <!-- Timeline Editor Section (Milestone M6) -->
     <section class="timeline-editor-section glass-card" id="timelineEditorSection" style="display: none;">
+      <!-- Timeline Helper Banner -->
+      <div class="timeline-help-banner">
+        <span class="help-icon">💡</span>
+        <div class="help-text">
+          <b>Hướng dẫn điều chỉnh:</b> 
+          (1) <b>Click vào cảnh</b> trên timeline phía dưới để xem trước đúng đoạn đó · 
+          (2) <b>Sửa lời thoại (voiceText)</b> ở bảng bên phải và bấm <b>🎙️ Re-TTS</b> để tạo lại giọng đọc · 
+          (3) <b>Đổi Template & Thời lượng</b> theo ý muốn · 
+          (4) Bấm <b>💾 Lưu Kịch Bản</b> hoặc <b>🚀 Render Video</b> để xuất video mới.
+        </div>
+      </div>
+
       <!-- Timeline Top Bar -->
       <div class="timeline-topbar">
         <div class="topbar-left">
@@ -384,7 +396,7 @@
             <button class="btn btn-sm btn-outline" id="btnTimelineRedo" title="Làm lại (Ctrl+Y)" disabled>
               <span>↷</span> Redo
             </button>
-            <button class="btn btn-sm btn-outline" id="btnTimelineSplit" title="Tách cảnh tại playhead">
+            <button class="btn btn-sm btn-outline" id="btnTimelineSplit" title="Tách cảnh tại vị trí playhead">
               <span>✂️</span> Tách Cảnh
             </button>
             <button class="btn btn-sm btn-outline text-danger" id="btnTimelineRippleDelete" title="Xóa cảnh và dồn track (Ripple Delete)">
@@ -418,7 +430,11 @@
             <div class="phone-notch"></div>
             <div class="phone-screen" id="previewScreen">
               <iframe id="iframePreview" src="about:blank" class="preview-iframe" title="Composition Preview"></iframe>
-              <video id="videoPreviewFallback" class="preview-video" style="display: none;" playsinline></video>
+              <video id="videoPreviewFallback" class="preview-video" style="display: none;" playsinline preload="auto"></video>
+              <div class="preview-play-overlay" id="previewPlayOverlay" title="Bấm để Phát / Dừng">
+                <div class="preview-play-btn">▶</div>
+              </div>
+              <div class="preview-scene-badge" id="previewSceneBadge" style="display: none;">Cảnh 1</div>
               <div class="preview-placeholder" id="previewPlaceholder">
                 <span>📱 Chưa chọn dự án để xem trước</span>
               </div>

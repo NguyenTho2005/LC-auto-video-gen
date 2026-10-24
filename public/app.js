@@ -650,6 +650,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const iframePreview = document.getElementById("iframePreview");
   const videoPreviewFallback = document.getElementById("videoPreviewFallback");
+  const previewPlayOverlay = document.getElementById("previewPlayOverlay");
+  const previewSceneBadge = document.getElementById("previewSceneBadge");
   const previewPlaceholder = document.getElementById("previewPlaceholder");
   const previewScreen = document.getElementById("previewScreen");
   const btnPlayPause = document.getElementById("btnPlayPause");
@@ -843,6 +845,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!currentProject) {
       iframePreview.style.display = "none";
       videoPreviewFallback.style.display = "none";
+      if (previewPlayOverlay) previewPlayOverlay.style.display = "none";
+      if (previewSceneBadge) previewSceneBadge.style.display = "none";
       previewPlaceholder.style.display = "flex";
       previewPlaceholder.innerHTML = `<span>📱 Chưa chọn dự án để xem trước</span>`;
       return;
@@ -855,13 +859,22 @@ document.addEventListener("DOMContentLoaded", () => {
       videoPreviewFallback.src = currentProject.videoUrl;
       videoPreviewFallback.currentTime = playheadTime || 0;
       videoPreviewFallback.load();
+      if (previewPlayOverlay) {
+        previewPlayOverlay.style.display = "flex";
+        previewPlayOverlay.classList.remove("hidden");
+      }
+      if (previewSceneBadge) previewSceneBadge.style.display = "block";
     } else if (currentProject.previewUrl) {
       iframePreview.style.display = "block";
       videoPreviewFallback.style.display = "none";
       iframePreview.src = currentProject.previewUrl;
+      if (previewPlayOverlay) previewPlayOverlay.style.display = "none";
+      if (previewSceneBadge) previewSceneBadge.style.display = "none";
     } else {
       iframePreview.style.display = "none";
       videoPreviewFallback.style.display = "none";
+      if (previewPlayOverlay) previewPlayOverlay.style.display = "none";
+      if (previewSceneBadge) previewSceneBadge.style.display = "none";
       previewPlaceholder.style.display = "flex";
       previewPlaceholder.innerHTML = `<span>⏳ Dự án chưa render.<br>Sử dụng Timeline Editor và bấm <b>Render Video</b>!</span>`;
     }
@@ -925,6 +938,10 @@ document.addEventListener("DOMContentLoaded", () => {
         el.addEventListener("click", (e) => {
           e.stopPropagation();
           selectClip(clip.id);
+          // Jump playhead and preview to this scene
+          playheadTime = clip.start;
+          updatePlayheadPosition();
+          seekPreview(playheadTime);
         });
 
         container.appendChild(el);
@@ -983,6 +1000,20 @@ document.addEventListener("DOMContentLoaded", () => {
     transportScrubber.value = playheadTime;
     const total = currentProject?.timelineState?.totalDuration || 30;
     timeDisplay.textContent = `${formatTime(playheadTime)} / ${formatTime(total)}`;
+
+    // Update active scene badge on phone mockup
+    if (previewSceneBadge && currentProject?.timelineState) {
+      const sceneTrack = currentProject.timelineState.tracks.find((t) => t.type === "scene");
+      if (sceneTrack) {
+        const activeClip = sceneTrack.clips.find(
+          (c) => playheadTime >= c.start && playheadTime < c.start + c.duration
+        );
+        if (activeClip) {
+          previewSceneBadge.style.display = "block";
+          previewSceneBadge.textContent = `${activeClip.name} (${formatTime(playheadTime)})`;
+        }
+      }
+    }
   }
 
   // Playhead Scrubber Input
@@ -1004,6 +1035,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function startPlayback() {
     isPlaying = true;
     btnPlayPause.textContent = "⏸";
+    if (previewPlayOverlay) previewPlayOverlay.classList.add("hidden");
     lastFrameTimestamp = performance.now();
 
     if (videoPreviewFallback.src && videoPreviewFallback.style.display !== "none") {
@@ -1040,11 +1072,14 @@ document.addEventListener("DOMContentLoaded", () => {
   function stopPlayback() {
     isPlaying = false;
     btnPlayPause.textContent = "▶";
+    if (previewPlayOverlay) previewPlayOverlay.classList.remove("hidden");
     if (playAnimFrame) cancelAnimationFrame(playAnimFrame);
     if (videoPreviewFallback.src) videoPreviewFallback.pause();
   }
 
   btnPlayPause.addEventListener("click", togglePlayback);
+  previewPlayOverlay?.addEventListener("click", togglePlayback);
+  videoPreviewFallback?.addEventListener("click", togglePlayback);
 
   // Sync video preview events
   videoPreviewFallback.addEventListener("timeupdate", () => {
@@ -1075,15 +1110,18 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Inspector Field Changes
-  inspectorVoiceText.addEventListener("change", () => {
+  inspectorVoiceText.addEventListener("input", () => {
     if (!currentProject || !selectedClipId) return;
     const clip = currentProject.timelineState.tracks[0]?.clips.find((c) => c.id === selectedClipId);
     if (!clip?.sceneId) return;
     const scene = currentProject.script.scenes.find((s) => s.id === clip.sceneId);
     if (scene) {
       scene.voiceText = inspectorVoiceText.value;
-      showToast("Đã cập nhật lời thoại. Hãy bấm Lưu kịch bản.");
     }
+  });
+
+  inspectorVoiceText.addEventListener("change", () => {
+    showToast("Đã cập nhật lời thoại. Hãy bấm Lưu kịch bản hoặc Re-TTS.");
   });
 
   inspectorTemplate.addEventListener("change", () => {
@@ -1092,7 +1130,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!clip?.sceneId) return;
     const scene = currentProject.script.scenes.find((s) => s.id === clip.sceneId);
     if (scene) {
+      pushCommandState();
       scene.templateData.template = inspectorTemplate.value;
+      if (clip.meta) clip.meta.template = inspectorTemplate.value;
       renderProjectTimeline(currentProject.timelineState);
       showToast(`Đã đổi template thành '${inspectorTemplate.value}'.`);
     }
@@ -1202,6 +1242,93 @@ document.addEventListener("DOMContentLoaded", () => {
 
     renderProjectTimeline(currentProject.timelineState);
     showToast(`Đã xóa cảnh '${deleted.name}' và dồn track (Ripple Delete).`);
+  });
+
+  // Split Scene at Playhead (Tách Cảnh)
+  btnTimelineSplit?.addEventListener("click", () => {
+    if (!currentProject) {
+      showToast("Chưa chọn dự án nào!");
+      return;
+    }
+    const sceneTrack = currentProject.timelineState.tracks.find((t) => t.type === "scene");
+    if (!sceneTrack) return;
+
+    // Find clip containing current playheadTime
+    const clipIndex = sceneTrack.clips.findIndex(
+      (c) => playheadTime > c.start + 0.3 && playheadTime < c.start + c.duration - 0.3,
+    );
+
+    if (clipIndex === -1) {
+      showToast("Kéo con trỏ Playhead vào giữa một cảnh (cách 2 đầu ít nhất 0.3s) để tách!");
+      return;
+    }
+
+    pushCommandState();
+    const clip = sceneTrack.clips[clipIndex];
+    const origDuration = clip.duration;
+    const splitPoint = Math.round((playheadTime - clip.start) * 10) / 10;
+    clip.duration = splitPoint;
+
+    const newClipId = `clip-split-${Date.now()}`;
+    const newSceneId = `scene-split-${Date.now().toString().slice(-4)}`;
+    const remainingDur = Math.round((origDuration - splitPoint) * 10) / 10;
+
+    const newClip = {
+      id: newClipId,
+      sceneId: newSceneId,
+      trackId: clip.trackId,
+      name: `${clip.name} (phần 2)`,
+      start: Math.round(playheadTime * 10) / 10,
+      duration: remainingDur,
+      meta: { ...clip.meta },
+    };
+
+    sceneTrack.clips.splice(clipIndex + 1, 0, newClip);
+
+    // Duplicate corresponding scene in script.json
+    const origSceneIdx = currentProject.script.scenes.findIndex((s) => s.id === clip.sceneId);
+    if (origSceneIdx !== -1) {
+      const origScene = currentProject.script.scenes[origSceneIdx];
+      const clonedScene = JSON.parse(JSON.stringify(origScene));
+      clonedScene.id = newSceneId;
+      clonedScene.voiceText = `Tiếp tục: ${origScene.voiceText.slice(0, 35)}...`;
+      currentProject.script.scenes.splice(origSceneIdx + 1, 0, clonedScene);
+    }
+
+    renderProjectTimeline(currentProject.timelineState);
+    selectClip(newClipId);
+    showToast(`Đã tách cảnh tại ${playheadTime.toFixed(1)}s!`);
+  });
+
+  // Adjust Scene Duration
+  inspectorDuration?.addEventListener("change", () => {
+    if (!currentProject || !selectedClipId) return;
+    const newDur = Math.max(0.5, Math.min(60, parseFloat(inspectorDuration.value) || 3.0));
+    inspectorDuration.value = newDur.toFixed(1);
+
+    const sceneTrack = currentProject.timelineState.tracks.find((t) => t.type === "scene");
+    const clipIndex = sceneTrack?.clips.findIndex((c) => c.id === selectedClipId);
+    if (!sceneTrack || clipIndex === -1 || clipIndex === undefined) return;
+
+    pushCommandState();
+    const clip = sceneTrack.clips[clipIndex];
+    const oldDur = clip.duration;
+    const diff = newDur - oldDur;
+    clip.duration = newDur;
+
+    // Ripple shift subsequent clips if snap/shift enabled
+    for (let i = clipIndex + 1; i < sceneTrack.clips.length; i++) {
+      sceneTrack.clips[i].start = Math.max(0, sceneTrack.clips[i].start + diff);
+    }
+
+    let maxEnd = 0;
+    sceneTrack.clips.forEach((c) => {
+      if (c.start + c.duration > maxEnd) maxEnd = c.start + c.duration;
+    });
+    currentProject.timelineState.totalDuration = Math.round(maxEnd * 100) / 100;
+
+    renderProjectTimeline(currentProject.timelineState);
+    showToast(`Đã đổi thời lượng cảnh thành ${newDur.toFixed(1)}s (Đã dồn track).`);
   });
 
   // Save Project Script
