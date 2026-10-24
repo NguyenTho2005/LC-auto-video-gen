@@ -13,7 +13,15 @@ import { loadConfig } from "./config.js";
 import { toSlug } from "./utils/slug.js";
 import { generateScriptFromContent } from "./utils/script-generator.js";
 import { addLogListener, log } from "./utils/logger.js";
-import { ScriptSchema } from "./render/script-schema.js";
+import { ScriptSchema, type Script } from "./render/script-schema.js";
+import {
+  migrateV1toV2,
+  buildTimelineState,
+  timelineStateToScript,
+} from "./timeline/index.js";
+import { getDurationSec, concatWithSilence } from "./assets/audio-tools.js";
+import { createTtsClient } from "./tts/index.js";
+import { applyLexicon } from "./tts/lexicon.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, "..");
@@ -485,6 +493,242 @@ app.delete("/api/videos/:slug", async (req, res) => {
     res.json({ success: true, message: "Đã xoá video thành công" });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── API: Cancel Job (M6) ───────────────────────────────────────────────────
+app.post("/api/jobs/:jobId/cancel", (req, res) => {
+  const { jobId } = req.params;
+  const job = jobs.get(jobId);
+  if (!job) return res.status(404).json({ error: "Không tìm thấy job" });
+
+  if (job.status === "running") {
+    job.status = "failed";
+    job.error = "Đã huỷ bởi người dùng";
+    broadcastToJob(job, "failed", { error: job.error });
+  }
+  res.json({ success: true, message: "Đã gửi tín hiệu huỷ tiến trình render" });
+});
+
+// ── API: List Projects (M6) ────────────────────────────────────────────────
+app.get("/api/projects", async (req, res) => {
+  try {
+    if (!existsSync(OUTPUT_DIR)) return res.json([]);
+    const entries = await readdir(OUTPUT_DIR, { withFileTypes: true });
+    const projects = [];
+
+    for (const ent of entries) {
+      if (!ent.isDirectory()) continue;
+      const folder = join(OUTPUT_DIR, ent.name);
+      const scriptFile = join(folder, "script.json");
+      if (!existsSync(scriptFile)) continue;
+
+      let title = ent.name;
+      let schemaVersion = 1;
+      let sceneCount = 0;
+      let mtime = new Date(0);
+
+      try {
+        const raw = JSON.parse(await readFile(scriptFile, "utf8"));
+        title = raw.metadata?.title || title;
+        schemaVersion = raw.schemaVersion || 1;
+        sceneCount = raw.scenes?.length || 0;
+      } catch {}
+
+      try {
+        const st = await stat(scriptFile);
+        mtime = st.mtime;
+      } catch {}
+
+      projects.push({
+        slug: ent.name,
+        title,
+        schemaVersion,
+        sceneCount,
+        hasVideo: existsSync(join(folder, "video.mp4")),
+        hasAudio: existsSync(join(folder, "voice.mp3")),
+        hasCaptions: existsSync(join(folder, "captions.json")),
+        mtime,
+      });
+    }
+
+    projects.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime());
+    res.json(projects);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── API: Get Project Detail & Timeline State (M6) ───────────────────────────
+app.get("/api/projects/:slug", async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const folder = join(OUTPUT_DIR, slug);
+    const scriptFile = join(folder, "script.json");
+
+    if (!existsSync(scriptFile)) {
+      return res.status(404).json({ error: "Không tìm thấy script.json trong project" });
+    }
+
+    const raw = JSON.parse(await readFile(scriptFile, "utf8"));
+    const script = ScriptSchema.parse(raw);
+
+    // Thu thập thời lượng thật của các scene audio nếu có
+    const audioDurations: Record<string, number> = {};
+    const voiceDir = join(folder, "voice");
+    if (existsSync(voiceDir)) {
+      for (const scene of script.scenes) {
+        const sceneAudioPath = join(voiceDir, `scene-${scene.id}.mp3`);
+        if (existsSync(sceneAudioPath)) {
+          try {
+            audioDurations[scene.id] = await getDurationSec(sceneAudioPath);
+          } catch {}
+        }
+      }
+    }
+
+    // Đọc captions nếu có
+    let captionCues = undefined;
+    const captionsFile = join(folder, "captions.json");
+    if (existsSync(captionsFile)) {
+      try {
+        captionCues = JSON.parse(await readFile(captionsFile, "utf8"));
+      } catch {}
+    }
+
+    // Đọc media.json nếu có
+    let media = null;
+    const mediaFile = join(folder, "media.json");
+    if (existsSync(mediaFile)) {
+      try {
+        media = JSON.parse(await readFile(mediaFile, "utf8"));
+      } catch {}
+    }
+
+    // Đọc sources.json nếu có
+    let sources = null;
+    const sourcesFile = join(folder, "sources.json");
+    if (existsSync(sourcesFile)) {
+      try {
+        sources = JSON.parse(await readFile(sourcesFile, "utf8"));
+      } catch {}
+    }
+
+    // Nâng cấp và dựng Timeline State
+    const scriptV2 = migrateV1toV2(script, audioDurations);
+    const timelineState = buildTimelineState(scriptV2, audioDurations, captionCues);
+
+    res.json({
+      slug,
+      script: scriptV2,
+      timelineState,
+      sources,
+      media,
+      hasVideo: existsSync(join(folder, "video.mp4")),
+      hasAudio: existsSync(join(folder, "voice.mp3")),
+      videoUrl: existsSync(join(folder, "video.mp4")) ? `/api/videos/${slug}/file/video.mp4` : null,
+      audioUrl: existsSync(join(folder, "voice.mp3")) ? `/api/videos/${slug}/file/voice.mp3` : null,
+      previewUrl: existsSync(join(folder, "index.html")) ? `/api/videos/${slug}/file/index.html` : null,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── API: Save Project Script (M6) ──────────────────────────────────────────
+app.post("/api/projects/:slug/script", async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const folder = join(OUTPUT_DIR, slug);
+    const scriptFile = join(folder, "script.json");
+
+    if (!existsSync(folder)) {
+      return res.status(404).json({ error: "Project folder not found" });
+    }
+
+    const validated = ScriptSchema.parse(req.body.script);
+    await writeFile(scriptFile, JSON.stringify(validated, null, 2), "utf8");
+
+    res.json({ success: true, script: validated });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// ── API: Re-TTS for a single Scene (M6) ────────────────────────────────────
+app.post("/api/projects/:slug/re-tts/:sceneId", async (req, res) => {
+  try {
+    const { slug, sceneId } = req.params;
+    const folder = join(OUTPUT_DIR, slug);
+    const scriptFile = join(folder, "script.json");
+
+    if (!existsSync(scriptFile)) {
+      return res.status(404).json({ error: "Không tìm thấy project" });
+    }
+
+    const raw = JSON.parse(await readFile(scriptFile, "utf8"));
+    const script = ScriptSchema.parse(raw);
+    const scene = script.scenes.find((s) => s.id === sceneId);
+    if (!scene) {
+      return res.status(404).json({ error: `Không tìm thấy scene có id '${sceneId}'` });
+    }
+
+    const cfg = loadConfig();
+    const voiceDir = join(folder, "voice");
+    await mkdir(voiceDir, { recursive: true });
+
+    const sceneAudioPath = join(voiceDir, `scene-${sceneId}.mp3`);
+    if (existsSync(sceneAudioPath)) {
+      await rm(sceneAudioPath, { force: true });
+    }
+
+    // 1. Áp dụng Lexicon nếu có
+    const processedText = applyLexicon(scene.voiceText);
+
+    // 2. Gọi TTS Client
+    const ttsClient = createTtsClient(cfg);
+    await ttsClient.generate(processedText, sceneAudioPath);
+
+    // 3. Tính duration mới của scene
+    const newDuration = await getDurationSec(sceneAudioPath);
+
+    // 4. Ghép lại toàn bộ voice scenes thành voice.mp3 nếu các file khác đều có
+    const audioFiles: string[] = [];
+    for (const sc of script.scenes) {
+      const p = join(voiceDir, `scene-${sc.id}.mp3`);
+      if (existsSync(p)) {
+        audioFiles.push(p);
+      }
+    }
+
+    if (audioFiles.length === script.scenes.length) {
+      const voiceMp3 = join(folder, "voice.mp3");
+      await concatWithSilence(audioFiles, 0.3, voiceMp3);
+    }
+
+    // 5. Cập nhật duration vào script.timeline
+    if (!script.timeline) {
+      script.timeline = { scenes: {}, captionCues: [] };
+    }
+    if (!script.timeline.scenes) {
+      script.timeline.scenes = {};
+    }
+    if (!script.timeline.scenes[sceneId]) {
+      script.timeline.scenes[sceneId] = {};
+    }
+    script.timeline.scenes[sceneId].duration = Math.round(newDuration * 1000) / 1000;
+    script.schemaVersion = 2;
+
+    await writeFile(scriptFile, JSON.stringify(script, null, 2), "utf8");
+
+    res.json({
+      success: true,
+      sceneId,
+      newDuration: Math.round(newDuration * 1000) / 1000,
+      audioUrl: `/api/videos/${slug}/file/voice.mp3`,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: `Re-TTS thất bại: ${err.message}` });
   }
 });
 

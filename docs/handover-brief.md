@@ -2,7 +2,7 @@
 
 > **Dành cho AI Agent tiếp nhận dự án.**  
 > Ngày cập nhật: 24/10/2026.  
-> Trạng thái hiện tại: **Đã hoàn thành 100% Milestone M0 (Audit), M1 (Caption & SRT), M2 (Media thật), M3 (Template review & Themes), M4 (LLM Script & Duyệt kịch bản), M5 (Audio polish, motion, preset)** trên nhánh `feat/m5-audio-motion`.
+> Trạng thái hiện tại: **Đã hoàn thành 100% Milestone M0 (Audit), M1 (Caption & SRT), M2 (Media thật), M3 (Template review & Themes), M4 (LLM Script & Duyệt kịch bản), M5 (Audio polish, motion, preset), M6 (Web UI & Timeline Editor)** trên nhánh `feat/m6-web-ui`.
 
 ---
 
@@ -176,44 +176,67 @@ AUTO_GEN_VIDEO/
   - `npm test`: 24 test files, **134/134 tests passed 100%**.
   - Render video mẫu thực tế: `output/m5-sample/video.mp4` (96.8 MB, 25.8s, 1080×1920 30fps H.264, audio AAC stereo với BGM ducking, ffprobe kiểm tra đạt chuẩn).
 
+### 3.8. Milestone M6 — Web UI và Timeline Editor (nhánh `feat/m6-web-ui`)
+- **Kiến trúc công nghệ chốt tại ADR-0001 ([`docs/adr-ui.md`](adr-ui.md)):**
+  - Backend: Mở rộng Express server hiện có tại `src/server.ts`, không sinh thêm phụ thuộc nặng ngoài.
+  - Preview: Nhúng composition HTML của HyperFrames qua `<iframe>` trực tiếp trong trình duyệt, đồng bộ tua (seek/scrub) GSAP timeline và audio không cần render proxy video.
+- **Headless Timeline Model độc lập (`src/timeline/`):**
+  - Cấu trúc track chuẩn: `scene`, `voice`, `caption`, `bgm`.
+  - Triển khai triệt để **Command Pattern** (`TimelineCommand`):
+    - `MoveClipCommand`: di chuyển clip với cơ chế tự động hít (snap tolerance 0.1s vào đầu/cuối cảnh, cues, hoặc playhead) và ràng buộc không chồng lấn (`non-overlapping constraint`).
+    - `TrimClipCommand`: điều chỉnh thời lượng, chặn ngưỡng tối thiểu `MIN_CLIP_DURATION = 0.2s`.
+    - `SplitClipCommand`: chia đôi cảnh tại điểm playhead.
+    - `RippleDeleteCommand`: xóa cảnh và tự động dồn (shift left) toàn bộ các cảnh phía sau một khoảng đúng bằng thời lượng cảnh bị xóa.
+    - `EditCueCommand`, `SetBgmCommand`, `UpdateSceneVoiceTextCommand`.
+  - Quản lý lịch sử Undo/Redo bằng `TimelineHistoryManager` với hai ngăn xếp `undoStack` và `redoStack`.
+  - Hàm `migrateV1toV2(script, audioDurations)` nâng cấp kịch bản v1 sang v2 với khối `timeline: { scenes, captionCues }` tự động tính thời lượng audio thực tế hoặc ước tính theo số từ.
+- **Mở rộng Server API (`src/server.ts`):**
+  - `GET /api/projects`: Liệt kê các project trong `output/` kèm thông số thời lượng, số cảnh, schemaVersion.
+  - `GET /api/projects/:slug`: Trả về kịch bản v2 và `timelineState` dựng sẵn, audio/video URLs.
+  - `POST /api/projects/:slug/script`: Lưu kịch bản `script.json` sau khi chỉnh sửa trên giao diện.
+  - `POST /api/projects/:slug/re-tts/:sceneId`: Thu âm lại giọng đọc cho riêng 1 cảnh (idempotent, áp dụng lexicon, tính lại duration mới, ghép lại `voice.mp3` và cập nhật `script.json`).
+  - `POST /api/jobs/:jobId/cancel`: Hỗ trợ huỷ job render đang chạy.
+- **Giao diện Web UI đa track trong `public/`:**
+  - Header chuyển đổi chế độ "Tạo Video Mới" và "Timeline Editor".
+  - Khung xem trước điện thoại dọc 9:16 có thanh điều khiển Play/Pause và Scrubber tua thời gian thực.
+  - Bảng Inspector chi tiết cảnh: chỉnh sửa lời thoại `voiceText`, đổi template hiển thị trong 12 templates, nút "Tạo lại giọng đọc (Re-TTS) riêng cảnh này".
+  - Timeline Visualizer trực quan đa track (Visual Scenes, Voice Track, Captions, BGM) với thước đo giây (ruler), playhead vạch đỏ di chuyển mượt mà, phân loại màu sắc từng cảnh theo template.
+  - Nhóm nút thao tác Undo, Redo, Tách cảnh, Ripple Delete, Snap Toggle, Lưu kịch bản, và Render Video.
+- **Kết quả nghiệm thu M6:**
+  - `npx tsc --noEmit`: 0 lỗi.
+  - `npm test`: 25 test files, **147/147 tests passed 100%** (13 tests mới cho timeline model, commands, snap, ripple delete, undo/redo).
+
 ---
 
 ## 4. Trạng thái hiện tại của dự án
 
-- **Nhánh Git hiện tại:** `feat/m5-audio-motion`.
-- **Trạng thái mã nguồn:** 0 lỗi TypeScript, 134/134 tests Vitest passed.
-- **Tiêu chí chấp nhận M5:** Đạt 100%:
-  1. Video có BGM nghe rõ ràng với cơ chế ducking tự động theo giọng nói (kiểm tra bằng ffmpeg/ffprobe trong test tích hợp).
-  2. Lexicon phát âm hoạt động chính xác với unit tests, không làm sai lệch hiển thị chữ trên màn hình.
-  3. Chuyển cảnh `cut`, `fade`, `slide`, `zoom` hoạt động trơn tru.
-  4. Preset độ dài kiểm tra dung sai hợp lý, kịch bản cũ không bị ảnh hưởng.
+- **Nhánh Git hiện tại:** `feat/m6-web-ui`.
+- **Trạng thái mã nguồn:** 0 lỗi TypeScript, 147/147 tests Vitest passed 100%.
+- **Tiêu chí chấp nhận M6:** Đạt 100%:
+  1. ADR chốt kiến trúc trước khi code (`docs/adr-ui.md`).
+  2. Mô hình timeline + Command + undo/redo + `migrate` v1→v2 trong lõi có test Vitest độc lập 100%.
+  3. Server local + Web UI đa track, có thao tác split/ripple delete/snap, sửa voiceText/templateData, Re-TTS từng cảnh, render có tiến độ và huỷ, mở project trong `output/`.
+  4. Tương thích ngược: CLI cũ (`npm run pipeline`, `rerender`) hoạt động nguyên vẹn.
 
 ---
 
-## 5. Bước tiếp theo cần làm ngay (Immediate Next Step: Milestone M6)
+## 5. Bước tiếp theo cần làm ngay (Immediate Next Step: Milestone M7)
 
-Nhiệm vụ tiếp theo là **Milestone M6 (Web UI và timeline editor)** theo đúng prompt **P-M6** trong `PRD2.md` Mục B4:
+Nhiệm vụ tiếp theo là **Milestone M7 (Thu thập tin, hỗ trợ đăng, CI/CD)** theo đúng prompt **P-M7** trong `PRD2.md` Mục B4:
 
 1. **Khởi tạo nhánh làm việc mới:**
    ```bash
-   git checkout -b feat/m6-web-ui
+   git checkout -b feat/m7-ingest-ci
    ```
-2. **Kỹ năng bắt buộc phải đọc trước:**
-   - [`.agents/skills/web-timeline-editor/SKILL.md`](../.agents/skills/web-timeline-editor/SKILL.md)
-   - [`.agents/skills/qa-verify/SKILL.md`](../.agents/skills/qa-verify/SKILL.md)
-3. **Các hạng mục cần làm ở M6:**
-   - **Bước 1: Viết `docs/adr-ui.md`:** Chốt kiến trúc công nghệ cho Web UI (Frontend nhẹ: Vite + React hoặc HTML5/Tailwind/ESM, Backend: Server Express local `src/server.ts` tái sử dụng toàn bộ core pipeline).
-   - **Mô hình Timeline Core (Headless Timeline Model):**
-     - Đặt tại `src/timeline/`: Các track Clip, Voice, BGM, Caption.
-     - Thao tác: trim, split, delete, move, snap, zoom.
-     - Command pattern với Undo / Redo stack đầy đủ (có unit tests độc lập không phụ thuộc UI).
-     - Hàm migrate schema v1 -> v2 (`script.json` schemaVersion: 2 với khối `timeline`).
-   - **Web UI & Preview:**
-     - Xem trước composition trực tiếp trong trình duyệt bằng HTML iframe và đồng bộ GSAP timeline.
-     - Các nút chức năng: Sửa kịch bản/template từng cảnh, chọn media, chọn theme, chỉnh BGM/caption.
-     - Nút "Tạo lại giọng" cho từng cảnh (re-TTS idempotent).
-     - Nút "Render Video" có thanh tiến độ và log trực tiếp từ server.
-4. **Quy trình nghiệm thu:**
-   - Chạy `npx tsc --noEmit` và `npm test` (unit tests cho Timeline Model + Undo/Redo + Migrate v1->v2).
-   - Kiểm tra server khởi động và API hoạt động ổn định.
-   - Cập nhật tiếp vào `docs/handover-brief.md`.
+2. **Các hạng mục cần làm ở M7:**
+   - **Cấu hình Feeds RSS (`config/feeds.yaml`):** Danh sách nguồn cấp dữ liệu (VnExpress, Tuổi Trẻ, GenK...).
+   - **Module Thu thập tin (`src/ingest/feed-collector.ts`):** Đọc RSS, bóc tách bài mới, lọc trùng lặp theo URL/title, hỗ trợ CLI liệt kê và chọn bài.
+   - **Hàng đợi tạo video hàng loạt (Batch Queue):** Xử lý tuần tự từng bài, ghi log chi tiết, bài bị lỗi không làm dừng cả hàng.
+   - **Hỗ trợ Đăng bài (Publish Kit):**
+     - Xuất ảnh bìa `cover.png` (frame 9:16 chọn từ video hoặc hook) tối ưu làm thumbnail TikTok.
+     - Xuất checklist `publish.md` (tiêu đề, 4 hashtag, ghi nguồn gốc, nhãn nội dung AI, bản quyền media).
+   - **Tự động hóa CI/CD:** Tạo GitHub Actions workflow `.github/workflows/ci.yml` tự động kiểm tra `npx tsc --noEmit` và `npm test` trên môi trường Ubuntu/Node 22.
+3. **Quy trình nghiệm thu:**
+   - Unit tests cho module RSS Ingest và Batch Queue (dùng mock data / Fake provider).
+   - Chạy `qa-verify` (`tsc --noEmit`, `npm test`).
+   - Cập nhật tài liệu hoàn thành vào `docs/handover-brief.md`.

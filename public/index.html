@@ -25,14 +25,18 @@
       </div>
       
       <div class="header-actions">
+        <div class="main-mode-switch" id="mainModeSwitch">
+          <button class="mode-btn active" id="btnModeStudio" data-mode="studio">
+            <span>✨ Tạo Video Mới</span>
+          </button>
+          <button class="mode-btn" id="btnModeTimeline" data-mode="timeline">
+            <span>⏱️ Timeline Editor</span>
+          </button>
+        </div>
         <div class="status-pill free-badge" id="ttsStatusBadge" title="Đang sử dụng Microsoft Edge TTS miễn phí, không tốn tiền API">
           <span class="status-dot green"></span>
           <span class="status-text">Edge TTS (0đ Miễn phí)</span>
         </div>
-        <button class="btn btn-outline" id="btnOpenStudioPreview" title="Mở HyperFrames Live Studio Preview">
-          <span class="icon">✨</span>
-          <span>HyperFrames Studio</span>
-        </button>
       </div>
     </div>
   </header>
@@ -212,6 +216,175 @@
       </section>
     </div>
 
+    <!-- Timeline Editor Section (Milestone M6) -->
+    <section class="timeline-editor-section glass-card" id="timelineEditorSection" style="display: none;">
+      <!-- Timeline Top Bar -->
+      <div class="timeline-topbar">
+        <div class="topbar-left">
+          <label for="selectTimelineProject" class="topbar-label">📁 Dự Án:</label>
+          <select id="selectTimelineProject" class="project-select">
+            <option value="">-- Đang quét dự án... --</option>
+          </select>
+          <button class="btn btn-sm btn-secondary" id="btnReloadTimelineProject" title="Tải lại dự án">🔄</button>
+        </div>
+
+        <div class="topbar-center">
+          <div class="command-group">
+            <button class="btn btn-sm btn-outline" id="btnTimelineUndo" title="Hoàn tác (Ctrl+Z)" disabled>
+              <span>↶</span> Undo
+            </button>
+            <button class="btn btn-sm btn-outline" id="btnTimelineRedo" title="Làm lại (Ctrl+Y)" disabled>
+              <span>↷</span> Redo
+            </button>
+            <button class="btn btn-sm btn-outline" id="btnTimelineSplit" title="Tách cảnh tại playhead">
+              <span>✂️</span> Tách Cảnh
+            </button>
+            <button class="btn btn-sm btn-outline text-danger" id="btnTimelineRippleDelete" title="Xóa cảnh và dồn track (Ripple Delete)">
+              <span>🗑️</span> Ripple Delete
+            </button>
+          </div>
+          <label class="snap-toggle-label" title="Tự động hít vào điểm đầu/cuối cảnh hoặc playhead trong ngưỡng 0.1s">
+            <input type="checkbox" id="checkTimelineSnap" checked>
+            <span>🧲 Snap (0.1s)</span>
+          </label>
+        </div>
+
+        <div class="topbar-right">
+          <button class="btn btn-sm btn-secondary" id="btnSaveProjectScript">
+            <span>💾</span> Lưu Kịch Bản
+          </button>
+          <button class="btn btn-sm btn-primary btn-glow" id="btnRenderFromTimeline">
+            <span>🚀</span> Render Video
+          </button>
+        </div>
+      </div>
+
+      <!-- Preview & Inspector Layout -->
+      <div class="timeline-workspace">
+        <!-- Phone 9:16 Preview Box -->
+        <div class="preview-panel">
+          <div class="phone-mockup-wrapper">
+            <div class="phone-notch"></div>
+            <div class="phone-screen" id="previewScreen">
+              <iframe id="iframePreview" src="about:blank" class="preview-iframe" title="Composition Preview"></iframe>
+              <video id="videoPreviewFallback" class="preview-video" style="display: none;" playsinline></video>
+              <div class="preview-placeholder" id="previewPlaceholder">
+                <span>📱 Chưa chọn dự án để xem trước</span>
+              </div>
+            </div>
+          </div>
+          <!-- Preview Transport Controls -->
+          <div class="transport-controls">
+            <button class="btn-play-pause" id="btnPlayPause">▶</button>
+            <span class="time-display" id="timeDisplay">00:00.0 / 00:00.0</span>
+            <input type="range" class="transport-scrubber" id="transportScrubber" min="0" max="60" step="0.05" value="0">
+          </div>
+        </div>
+
+        <!-- Scene Inspector & Property Panel -->
+        <div class="inspector-panel">
+          <div class="inspector-header">
+            <h4 class="inspector-title" id="inspectorSceneTitle">Chi Tiết Cảnh</h4>
+            <span class="scene-type-badge" id="inspectorSceneType">hook</span>
+          </div>
+
+          <form id="formSceneInspector" onsubmit="return false;">
+            <div class="form-group">
+              <label for="inspectorVoiceText">Lời thoại giọng đọc (voiceText)</label>
+              <textarea id="inspectorVoiceText" rows="4" placeholder="Nhập lời thoại của cảnh..."></textarea>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group col-6">
+                <label for="inspectorTemplate">Template hiển thị</label>
+                <select id="inspectorTemplate">
+                  <optgroup label="Cơ bản">
+                    <option value="hook">hook (Cảnh mở đầu)</option>
+                    <option value="stat-hero">stat-hero (Số liệu lớn)</option>
+                    <option value="feature-list">feature-list (Danh sách)</option>
+                    <option value="comparison">comparison (So sánh)</option>
+                    <option value="callout">callout (Tuyên bố)</option>
+                    <option value="outro">outro (Kết bài)</option>
+                  </optgroup>
+                  <optgroup label="Mở rộng Review (M3)">
+                    <option value="spec-table">spec-table (Bảng cấu hình)</option>
+                    <option value="pros-cons">pros-cons (Ưu & Nhược điểm)</option>
+                    <option value="verdict-score">verdict-score (Điểm đánh giá)</option>
+                    <option value="price-tag">price-tag (Giá bán)</option>
+                    <option value="image-gallery">image-gallery (Bộ sưu tập)</option>
+                    <option value="phone-mockup">phone-mockup (Mô hình điện thoại)</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div class="form-group col-6">
+                <label for="inspectorDuration">Thời lượng cảnh (giây)</label>
+                <input type="number" id="inspectorDuration" min="0.5" max="30" step="0.1" value="3.0">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Thao tác âm thanh cho cảnh này</label>
+              <button type="button" class="btn btn-outline btn-block" id="btnReTtsCurrentScene">
+                <span class="icon">🎙️</span>
+                <span>Tạo Lại Giọng Đọc (Re-TTS) Riêng Cảnh Này</span>
+              </button>
+              <span class="field-hint">Chỉ render lại file mp3 của cảnh này và nối lại vào bài mà không cần chạy lại toàn bộ video.</span>
+            </div>
+
+            <div class="scene-meta-box" id="inspectorMetaBox">
+              <div class="meta-row">
+                <span class="meta-key">Scene ID:</span>
+                <span class="meta-val" id="metaSceneId">-</span>
+              </div>
+              <div class="meta-row">
+                <span class="meta-key">Thời điểm bắt đầu:</span>
+                <span class="meta-val" id="metaSceneStart">0.0s</span>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Multi-track Timeline Visualizer -->
+      <div class="timeline-visual-container">
+        <div class="timeline-tracks-header">
+          <div class="track-label-col">Tracks</div>
+          <div class="track-ruler-area" id="trackRulerArea">
+            <!-- Ruler markings injected by JS -->
+          </div>
+        </div>
+
+        <div class="timeline-tracks-body" id="timelineTracksBody">
+          <!-- Playhead vertical line -->
+          <div class="timeline-playhead-line" id="timelinePlayheadLine" style="left: 120px;"></div>
+
+          <!-- Track 1: Scenes -->
+          <div class="timeline-track-row" id="trackScenesRow">
+            <div class="track-title-col">🎬 Visual Scenes</div>
+            <div class="track-content-col" id="trackScenesContent"></div>
+          </div>
+
+          <!-- Track 2: Voice -->
+          <div class="timeline-track-row" id="trackVoiceRow">
+            <div class="track-title-col">🎙️ Voice Track</div>
+            <div class="track-content-col" id="trackVoiceContent"></div>
+          </div>
+
+          <!-- Track 3: Captions -->
+          <div class="timeline-track-row" id="trackCaptionsRow">
+            <div class="track-title-col">💬 Captions</div>
+            <div class="track-content-col" id="trackCaptionsContent"></div>
+          </div>
+
+          <!-- Track 4: BGM -->
+          <div class="timeline-track-row" id="trackBgmRow">
+            <div class="track-title-col">🎵 BGM</div>
+            <div class="track-content-col" id="trackBgmContent"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Video Library Section -->
     <section class="library-section" id="librarySection">
       <div class="section-header">
@@ -300,6 +473,12 @@
         <div class="logs-console" id="logsConsole">
           <div class="log-line text-muted">Đang kết nối tới server...</div>
         </div>
+      </div>
+
+      <div class="modal-running-actions" id="modalRunningActions" style="margin-top: 16px; display: flex; justify-content: flex-end;">
+        <button class="btn btn-sm btn-outline text-danger" id="btnCancelRenderJob">
+          <span>🛑</span> Huỷ Render
+        </button>
       </div>
 
       <div class="modal-footer" id="modalFooter" style="display: none;">

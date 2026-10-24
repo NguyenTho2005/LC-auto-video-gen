@@ -578,6 +578,518 @@ document.addEventListener("DOMContentLoaded", () => {
     window.open("http://localhost:3002", "_blank");
   });
 
+  // ── Milestone M6: Timeline Editor Client Logic ───────────────────────────
+  const btnModeStudio = document.getElementById("btnModeStudio");
+  const btnModeTimeline = document.getElementById("btnModeTimeline");
+  const heroSection = document.querySelector(".hero-section");
+  const studioLayout = document.querySelector(".studio-layout");
+  const timelineEditorSection = document.getElementById("timelineEditorSection");
+
+  const selectTimelineProject = document.getElementById("selectTimelineProject");
+  const btnReloadTimelineProject = document.getElementById("btnReloadTimelineProject");
+  const btnTimelineUndo = document.getElementById("btnTimelineUndo");
+  const btnTimelineRedo = document.getElementById("btnTimelineRedo");
+  const btnTimelineSplit = document.getElementById("btnTimelineSplit");
+  const btnTimelineRippleDelete = document.getElementById("btnTimelineRippleDelete");
+  const checkTimelineSnap = document.getElementById("checkTimelineSnap");
+  const btnSaveProjectScript = document.getElementById("btnSaveProjectScript");
+  const btnRenderFromTimeline = document.getElementById("btnRenderFromTimeline");
+  const btnCancelRenderJob = document.getElementById("btnCancelRenderJob");
+
+  const iframePreview = document.getElementById("iframePreview");
+  const videoPreviewFallback = document.getElementById("videoPreviewFallback");
+  const previewPlaceholder = document.getElementById("previewPlaceholder");
+  const btnPlayPause = document.getElementById("btnPlayPause");
+  const timeDisplay = document.getElementById("timeDisplay");
+  const transportScrubber = document.getElementById("transportScrubber");
+  const timelinePlayheadLine = document.getElementById("timelinePlayheadLine");
+
+  const inspectorSceneTitle = document.getElementById("inspectorSceneTitle");
+  const inspectorSceneType = document.getElementById("inspectorSceneType");
+  const inspectorVoiceText = document.getElementById("inspectorVoiceText");
+  const inspectorTemplate = document.getElementById("inspectorTemplate");
+  const inspectorDuration = document.getElementById("inspectorDuration");
+  const btnReTtsCurrentScene = document.getElementById("btnReTtsCurrentScene");
+  const metaSceneId = document.getElementById("metaSceneId");
+  const metaSceneStart = document.getElementById("metaSceneStart");
+
+  const trackRulerArea = document.getElementById("trackRulerArea");
+  const trackScenesContent = document.getElementById("trackScenesContent");
+  const trackVoiceContent = document.getElementById("trackVoiceContent");
+  const trackCaptionsContent = document.getElementById("trackCaptionsContent");
+  const trackBgmContent = document.getElementById("trackBgmContent");
+
+  const PX_PER_SEC = 40; // Scale: 40px = 1 second
+  let currentProject = null;
+  let selectedClipId = null;
+  let isPlaying = false;
+  let playheadTime = 0;
+  let playAnimFrame = null;
+  let lastFrameTimestamp = null;
+  let undoStack = [];
+  let redoStack = [];
+
+  // Switch between Studio and Timeline mode
+  function switchMode(mode) {
+    if (mode === "timeline") {
+      btnModeStudio.classList.remove("active");
+      btnModeTimeline.classList.add("active");
+      heroSection.style.display = "none";
+      studioLayout.style.display = "none";
+      timelineEditorSection.style.display = "flex";
+      loadProjectsList();
+    } else {
+      btnModeTimeline.classList.remove("active");
+      btnModeStudio.classList.add("active");
+      heroSection.style.display = "block";
+      studioLayout.style.display = "grid";
+      timelineEditorSection.style.display = "none";
+      stopPlayback();
+    }
+  }
+
+  btnModeStudio.addEventListener("click", () => switchMode("studio"));
+  btnModeTimeline.addEventListener("click", () => switchMode("timeline"));
+
+  // Fetch projects list for timeline selector
+  async function loadProjectsList(preferredSlug) {
+    try {
+      const res = await fetch("/api/projects");
+      const list = await res.json();
+      selectTimelineProject.innerHTML = "";
+
+      if (list.length === 0) {
+        selectTimelineProject.innerHTML = `<option value="">-- Chưa có dự án nào --</option>`;
+        return;
+      }
+
+      list.forEach((p) => {
+        const opt = document.createElement("option");
+        opt.value = p.slug;
+        opt.textContent = `${p.title} (${p.sceneCount} cảnh · v${p.schemaVersion})`;
+        selectTimelineProject.appendChild(opt);
+      });
+
+      const chosenSlug = preferredSlug || (currentProject ? currentProject.slug : list[0].slug);
+      selectTimelineProject.value = chosenSlug;
+      loadProjectDetail(chosenSlug);
+    } catch (err) {
+      console.error(err);
+      showToast("Không thể tải danh sách dự án");
+    }
+  }
+
+  selectTimelineProject.addEventListener("change", (e) => {
+    if (e.target.value) {
+      loadProjectDetail(e.target.value);
+    }
+  });
+
+  btnReloadTimelineProject.addEventListener("click", () => {
+    if (selectTimelineProject.value) {
+      loadProjectDetail(selectTimelineProject.value);
+      showToast("Đã nạp lại dữ liệu dự án");
+    }
+  });
+
+  // Load project details & build timeline UI
+  async function loadProjectDetail(slug) {
+    try {
+      stopPlayback();
+      const res = await fetch(`/api/projects/${slug}`);
+      if (!res.ok) throw new Error("Lỗi nạp dự án");
+      currentProject = await res.json();
+      undoStack = [];
+      redoStack = [];
+      updateUndoRedoButtons();
+
+      renderProjectTimeline(currentProject.timelineState);
+      setupPreviewPlayer();
+
+      if (currentProject.timelineState.tracks[0]?.clips[0]) {
+        selectClip(currentProject.timelineState.tracks[0].clips[0].id);
+      }
+    } catch (err) {
+      console.error(err);
+      showToast(`Lỗi: ${err.message}`);
+    }
+  }
+
+  function setupPreviewPlayer() {
+    previewPlaceholder.style.display = "none";
+    if (currentProject.previewUrl) {
+      iframePreview.style.display = "block";
+      videoPreviewFallback.style.display = "none";
+      iframePreview.src = currentProject.previewUrl;
+    } else if (currentProject.videoUrl) {
+      iframePreview.style.display = "none";
+      videoPreviewFallback.style.display = "block";
+      videoPreviewFallback.src = currentProject.videoUrl;
+    } else {
+      iframePreview.style.display = "none";
+      videoPreviewFallback.style.display = "none";
+      previewPlaceholder.style.display = "flex";
+      previewPlaceholder.innerHTML = `<span>⏳ Dự án chưa render.<br>Sử dụng Timeline Editor và bấm Render Video!</span>`;
+    }
+  }
+
+  // Format seconds to MM:SS.S
+  function formatTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    const ms = Math.floor((sec % 1) * 10);
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}.${ms}`;
+  }
+
+  // Render Visual Timeline Tracks
+  function renderProjectTimeline(state) {
+    const totalDuration = state.totalDuration || 30;
+    const totalWidthPx = Math.max(1200, Math.ceil(totalDuration * PX_PER_SEC) + 100);
+
+    // 1. Ruler
+    trackRulerArea.innerHTML = "";
+    trackRulerArea.style.width = `${totalWidthPx}px`;
+    for (let t = 0; t <= totalDuration + 2; t += 1) {
+      const left = t * PX_PER_SEC;
+      const isMajor = t % 5 === 0;
+      const tick = document.createElement("div");
+      tick.className = "ruler-tick";
+      tick.style.left = `${left}px`;
+      if (isMajor) {
+        tick.textContent = `${t}s`;
+        tick.style.borderLeftColor = "rgba(255, 255, 255, 0.4)";
+      }
+      trackRulerArea.appendChild(tick);
+    }
+
+    // Update scrubber bounds
+    transportScrubber.max = totalDuration;
+    transportScrubber.value = playheadTime;
+    timeDisplay.textContent = `${formatTime(playheadTime)} / ${formatTime(totalDuration)}`;
+
+    // Helper render track clips
+    function renderClips(trackType, container) {
+      container.innerHTML = "";
+      container.style.width = `${totalWidthPx}px`;
+      const track = state.tracks.find((t) => t.type === trackType);
+      if (!track) return;
+
+      track.clips.forEach((clip) => {
+        const el = document.createElement("div");
+        el.className = `timeline-clip clip-${clip.meta?.template || trackType}`;
+        if (clip.id === selectedClipId) el.classList.add("selected");
+
+        const leftPx = clip.start * PX_PER_SEC;
+        const widthPx = Math.max(16, clip.duration * PX_PER_SEC);
+
+        el.style.left = `${leftPx}px`;
+        el.style.width = `${widthPx}px`;
+        el.dataset.clipId = clip.id;
+        el.textContent = clip.name;
+        el.title = `${clip.name} [${clip.start.toFixed(1)}s - ${(clip.start + clip.duration).toFixed(1)}s]`;
+
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectClip(clip.id);
+        });
+
+        container.appendChild(el);
+      });
+    }
+
+    renderClips("scene", trackScenesContent);
+    renderClips("voice", trackVoiceContent);
+    renderClips("caption", trackCaptionsContent);
+    renderClips("bgm", trackBgmContent);
+
+    updatePlayheadPosition();
+  }
+
+  function selectClip(clipId) {
+    selectedClipId = clipId;
+    document.querySelectorAll(".timeline-clip").forEach((el) => {
+      el.classList.toggle("selected", el.dataset.clipId === clipId);
+    });
+
+    if (!currentProject?.timelineState) return;
+
+    // Find clip in all tracks
+    let foundClip = null;
+    for (const track of currentProject.timelineState.tracks) {
+      const match = track.clips.find((c) => c.id === clipId);
+      if (match) {
+        foundClip = match;
+        break;
+      }
+    }
+
+    if (foundClip && foundClip.sceneId) {
+      const scene = currentProject.script.scenes.find((s) => s.id === foundClip.sceneId);
+      if (scene) {
+        inspectorSceneTitle.textContent = `Chi Tiết Cảnh: ${scene.id}`;
+        inspectorSceneType.textContent = scene.type;
+        inspectorVoiceText.value = scene.voiceText;
+        inspectorTemplate.value = scene.templateData.template;
+        inspectorDuration.value = foundClip.duration.toFixed(1);
+        metaSceneId.textContent = scene.id;
+        metaSceneStart.textContent = `${foundClip.start.toFixed(1)}s`;
+      }
+    }
+  }
+
+  // Update playhead UI
+  function updatePlayheadPosition() {
+    const leftPx = 140 + playheadTime * PX_PER_SEC;
+    timelinePlayheadLine.style.left = `${leftPx}px`;
+    transportScrubber.value = playheadTime;
+    const total = currentProject?.timelineState?.totalDuration || 30;
+    timeDisplay.textContent = `${formatTime(playheadTime)} / ${formatTime(total)}`;
+  }
+
+  // Playhead Scrubber Input
+  transportScrubber.addEventListener("input", (e) => {
+    playheadTime = parseFloat(e.target.value);
+    updatePlayheadPosition();
+    seekPreview(playheadTime);
+  });
+
+  // Transport Play/Pause
+  function togglePlayback() {
+    if (isPlaying) {
+      stopPlayback();
+    } else {
+      startPlayback();
+    }
+  }
+
+  function startPlayback() {
+    isPlaying = true;
+    btnPlayPause.textContent = "⏸";
+    lastFrameTimestamp = performance.now();
+
+    if (videoPreviewFallback.src && videoPreviewFallback.style.display !== "none") {
+      videoPreviewFallback.currentTime = playheadTime;
+      videoPreviewFallback.play().catch(() => {});
+    }
+
+    function step(timestamp) {
+      if (!isPlaying) return;
+      const deltaSec = (timestamp - lastFrameTimestamp) / 1000;
+      lastFrameTimestamp = timestamp;
+
+      playheadTime += deltaSec;
+      const total = currentProject?.timelineState?.totalDuration || 30;
+
+      if (playheadTime >= total) {
+        playheadTime = 0;
+        stopPlayback();
+        return;
+      }
+
+      updatePlayheadPosition();
+      seekPreview(playheadTime);
+      playAnimFrame = requestAnimationFrame(step);
+    }
+
+    playAnimFrame = requestAnimationFrame(step);
+  }
+
+  function stopPlayback() {
+    isPlaying = false;
+    btnPlayPause.textContent = "▶";
+    if (playAnimFrame) cancelAnimationFrame(playAnimFrame);
+    if (videoPreviewFallback.src) videoPreviewFallback.pause();
+  }
+
+  btnPlayPause.addEventListener("click", togglePlayback);
+
+  function seekPreview(time) {
+    if (iframePreview.style.display !== "none" && iframePreview.contentWindow) {
+      try {
+        const win = iframePreview.contentWindow;
+        if (win.__timelines && win.__timelines["news-video"]) {
+          win.__timelines["news-video"].seek(time);
+        }
+      } catch {}
+    } else if (videoPreviewFallback.style.display !== "none" && !isPlaying) {
+      videoPreviewFallback.currentTime = time;
+    }
+  }
+
+  // Inspector Field Changes
+  inspectorVoiceText.addEventListener("change", () => {
+    if (!currentProject || !selectedClipId) return;
+    const clip = currentProject.timelineState.tracks[0]?.clips.find((c) => c.id === selectedClipId);
+    if (!clip?.sceneId) return;
+    const scene = currentProject.script.scenes.find((s) => s.id === clip.sceneId);
+    if (scene) {
+      scene.voiceText = inspectorVoiceText.value;
+      showToast("Đã cập nhật lời thoại. Hãy bấm Lưu kịch bản.");
+    }
+  });
+
+  inspectorTemplate.addEventListener("change", () => {
+    if (!currentProject || !selectedClipId) return;
+    const clip = currentProject.timelineState.tracks[0]?.clips.find((c) => c.id === selectedClipId);
+    if (!clip?.sceneId) return;
+    const scene = currentProject.script.scenes.find((s) => s.id === clip.sceneId);
+    if (scene) {
+      scene.templateData.template = inspectorTemplate.value;
+      renderProjectTimeline(currentProject.timelineState);
+      showToast(`Đã đổi template thành '${inspectorTemplate.value}'.`);
+    }
+  });
+
+  // Re-TTS Current Scene
+  btnReTtsCurrentScene.addEventListener("click", async () => {
+    if (!currentProject || !selectedClipId) {
+      showToast("Vui lòng chọn một cảnh visual trên timeline!");
+      return;
+    }
+
+    const clip = currentProject.timelineState.tracks[0]?.clips.find((c) => c.id === selectedClipId);
+    if (!clip?.sceneId) {
+      showToast("Không tìm thấy thông tin cảnh để Re-TTS!");
+      return;
+    }
+
+    const sceneId = clip.sceneId;
+    btnReTtsCurrentScene.disabled = true;
+    btnReTtsCurrentScene.innerHTML = `<span class="modal-spinner" style="width: 14px; height: 14px; display: inline-block;"></span> Đang tạo lại giọng đọc...`;
+
+    try {
+      const res = await fetch(`/api/projects/${currentProject.slug}/re-tts/${sceneId}`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Re-TTS thất bại");
+
+      showToast(`Re-TTS thành công! Thời lượng mới: ${data.newDuration}s`);
+      await loadProjectDetail(currentProject.slug);
+    } catch (err) {
+      console.error(err);
+      showToast(`Lỗi Re-TTS: ${err.message}`);
+    } finally {
+      btnReTtsCurrentScene.disabled = false;
+      btnReTtsCurrentScene.innerHTML = `<span class="icon">🎙️</span><span>Tạo Lại Giọng Đọc (Re-TTS) Riêng Cảnh Này</span>`;
+    }
+  });
+
+  // Command Pattern Buttons: Undo / Redo / Ripple Delete / Split
+  function updateUndoRedoButtons() {
+    btnTimelineUndo.disabled = undoStack.length === 0;
+    btnTimelineRedo.disabled = redoStack.length === 0;
+  }
+
+  function pushCommandState() {
+    undoStack.push(JSON.parse(JSON.stringify(currentProject)));
+    redoStack = [];
+    updateUndoRedoButtons();
+  }
+
+  btnTimelineUndo.addEventListener("click", () => {
+    if (undoStack.length === 0) return;
+    const prev = undoStack.pop();
+    redoStack.push(JSON.parse(JSON.stringify(currentProject)));
+    currentProject = prev;
+    renderProjectTimeline(currentProject.timelineState);
+    updateUndoRedoButtons();
+    showToast("Đã Hoàn tác (Undo)");
+  });
+
+  btnTimelineRedo.addEventListener("click", () => {
+    if (redoStack.length === 0) return;
+    const next = redoStack.pop();
+    undoStack.push(JSON.parse(JSON.stringify(currentProject)));
+    currentProject = next;
+    renderProjectTimeline(currentProject.timelineState);
+    updateUndoRedoButtons();
+    showToast("Đã Làm lại (Redo)");
+  });
+
+  // Ripple Delete Scene
+  btnTimelineRippleDelete.addEventListener("click", () => {
+    if (!currentProject || !selectedClipId) {
+      showToast("Vui lòng chọn cảnh cần xóa!");
+      return;
+    }
+    const sceneTrack = currentProject.timelineState.tracks.find((t) => t.type === "scene");
+    const clipIndex = sceneTrack?.clips.findIndex((c) => c.id === selectedClipId);
+    if (!sceneTrack || clipIndex === -1 || clipIndex === undefined) return;
+
+    if (sceneTrack.clips.length <= 5) {
+      showToast("Video cần tối thiểu 5 cảnh để đảm bảo cấu trúc TikTok.");
+      return;
+    }
+
+    pushCommandState();
+    const [deleted] = sceneTrack.clips.splice(clipIndex, 1);
+    const shift = deleted.duration;
+
+    for (const clip of sceneTrack.clips) {
+      if (clip.start >= deleted.start) {
+        clip.start = Math.max(0, clip.start - shift);
+      }
+    }
+
+    if (deleted.sceneId) {
+      currentProject.script.scenes = currentProject.script.scenes.filter((s) => s.id !== deleted.sceneId);
+    }
+
+    let maxEnd = 0;
+    sceneTrack.clips.forEach((c) => {
+      if (c.start + c.duration > maxEnd) maxEnd = c.start + c.duration;
+    });
+    currentProject.timelineState.totalDuration = Math.round(maxEnd * 100) / 100;
+
+    renderProjectTimeline(currentProject.timelineState);
+    showToast(`Đã xóa cảnh '${deleted.name}' và dồn track (Ripple Delete).`);
+  });
+
+  // Save Project Script
+  btnSaveProjectScript.addEventListener("click", async () => {
+    if (!currentProject) return;
+    try {
+      btnSaveProjectScript.disabled = true;
+      btnSaveProjectScript.textContent = "Đang lưu...";
+
+      const res = await fetch(`/api/projects/${currentProject.slug}/script`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ script: currentProject.script }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Không thể lưu script");
+
+      showToast("Đã lưu kịch bản script.json thành công!");
+    } catch (err) {
+      console.error(err);
+      showToast(`Lỗi: ${err.message}`);
+    } finally {
+      btnSaveProjectScript.disabled = false;
+      btnSaveProjectScript.innerHTML = `<span>💾</span> Lưu Kịch Bản`;
+    }
+  });
+
+  // Render Video from Timeline
+  btnRenderFromTimeline.addEventListener("click", () => {
+    if (!currentProject) return;
+    submitRenderJob({ script: currentProject.script });
+  });
+
+  // Cancel Job Event
+  if (btnCancelRenderJob) {
+    btnCancelRenderJob.addEventListener("click", async () => {
+      if (!currentActiveJob) return;
+      try {
+        await fetch(`/api/jobs/${currentActiveJob}/cancel`, { method: "POST" });
+        showToast("Đã gửi yêu cầu huỷ render!");
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
   // Escape HTML helper
   function escapeHtml(text) {
     if (!text) return "";

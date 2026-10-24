@@ -171,7 +171,7 @@ export type BgmSpecType = z.infer<typeof BgmSpec>;
 
 // ── Scene schema ───────────────────────────────────────────────────────────
 
-const Scene = z.object({
+export const Scene = z.object({
   id: z.string().min(1),
   type: z.enum(["hook", "body", "outro"]),
   voiceText: z.string().min(1),
@@ -183,6 +183,7 @@ const Scene = z.object({
   /** Optional scene transition (cut, fade, slide, zoom) (M5) */
   transition: TransitionSpec.optional(),
 });
+export type SceneType = z.infer<typeof Scene>;
 
 // ── Caption schema (M1) ────────────────────────────────────────────────────
 export const CaptionOptions = z.object({
@@ -192,6 +193,28 @@ export const CaptionOptions = z.object({
 
 export type CaptionOptionsType = z.infer<typeof CaptionOptions>;
 
+// ── Timeline schema (M6) ───────────────────────────────────────────────────
+export const TimelineSceneTiming = z.object({
+  start: z.number().min(0).optional(),
+  duration: z.number().min(0.1).optional(),
+  trimIn: z.number().min(0).optional(),
+  trimOut: z.number().min(0).optional(),
+});
+export type TimelineSceneTimingType = z.infer<typeof TimelineSceneTiming>;
+
+export const TimelineCaptionCue = z.object({
+  start: z.number().min(0),
+  end: z.number().min(0),
+  text: z.string(),
+});
+export type TimelineCaptionCueType = z.infer<typeof TimelineCaptionCue>;
+
+export const TimelineSpec = z.object({
+  scenes: z.record(z.string(), TimelineSceneTiming).optional(),
+  captionCues: z.array(TimelineCaptionCue).optional(),
+});
+export type TimelineSpecType = z.infer<typeof TimelineSpec>;
+
 // ── Root schema ────────────────────────────────────────────────────────────
 
 export const ScriptSchema = z.object({
@@ -200,6 +223,7 @@ export const ScriptSchema = z.object({
   captions: CaptionOptions.optional(),
   bgm: BgmSpec.optional(),
   preset: z.enum(["short_30", "news_45", "review_60"]).optional(),
+  timeline: TimelineSpec.optional(),
   metadata: z.object({
     title: z.string().min(1),
     source: z.object({

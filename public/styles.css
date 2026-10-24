@@ -1079,3 +1079,390 @@ textarea:focus {
   transform: translateY(0);
   opacity: 1;
 }
+
+/* ── Milestone M6: Timeline Editor Styles ───────────────────────────────── */
+.main-mode-switch {
+  display: flex;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  gap: 4px;
+}
+
+.mode-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mode-btn:hover {
+  color: #fff;
+}
+
+.mode-btn.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
+.timeline-editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  margin-bottom: 2.5rem;
+  background: rgba(15, 23, 42, 0.75);
+}
+
+.timeline-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.topbar-left, .topbar-center, .topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.topbar-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.project-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: #fff;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  max-width: 280px;
+}
+
+.command-group {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.snap-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.timeline-workspace {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* Phone Preview (9:16) */
+.preview-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.phone-mockup-wrapper {
+  width: 270px;
+  height: 480px;
+  background: #000;
+  border-radius: 36px;
+  border: 4px solid #334155;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.7), 0 0 15px rgba(99, 102, 241, 0.2);
+  overflow: hidden;
+  position: relative;
+}
+
+.phone-notch {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90px;
+  height: 18px;
+  background: #000;
+  border-radius: 10px;
+  z-index: 10;
+}
+
+.phone-screen {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: #0b0f19;
+}
+
+.preview-iframe, .preview-video {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+.preview-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.transport-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 270px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.btn-play-pause {
+  background: var(--primary);
+  border: none;
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.time-display {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.transport-scrubber {
+  flex: 1;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+/* Inspector Panel */
+.inspector-panel {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.inspector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.inspector-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.scene-type-badge {
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  color: var(--accent-cyan);
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.scene-meta-box {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  display: flex;
+  gap: 1.5rem;
+}
+
+.meta-key {
+  color: var(--text-secondary);
+  margin-right: 0.35rem;
+}
+
+.meta-val {
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+/* Timeline Multi-track Visualizer */
+.timeline-visual-container {
+  background: #090d16;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  position: relative;
+  user-select: none;
+}
+
+.timeline-tracks-header {
+  display: flex;
+  background: #0f172a;
+  border-bottom: 1px solid var(--border-color);
+  height: 28px;
+}
+
+.track-label-col {
+  width: 140px;
+  min-width: 140px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  border-right: 1px solid var(--border-color);
+  background: #0b1120;
+}
+
+.track-ruler-area {
+  flex: 1;
+  position: relative;
+  height: 100%;
+  min-width: 1200px;
+}
+
+.ruler-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  padding-left: 4px;
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.timeline-tracks-body {
+  position: relative;
+  min-width: 1340px;
+}
+
+.timeline-playhead-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ef4444;
+  z-index: 30;
+  pointer-events: none;
+  box-shadow: 0 0 8px #ef4444;
+}
+
+.timeline-playhead-line::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -5px;
+  width: 12px;
+  height: 12px;
+  background: #ef4444;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.timeline-track-row {
+  display: flex;
+  height: 48px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.track-title-col {
+  width: 140px;
+  min-width: 140px;
+  background: #0b1120;
+  border-right: 1px solid var(--border-color);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+}
+
+.track-content-col {
+  flex: 1;
+  position: relative;
+  height: 100%;
+}
+
+.timeline-clip {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: transform 0.1s, box-shadow 0.1s;
+  display: flex;
+  align-items: center;
+}
+
+.timeline-clip:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+.timeline-clip.selected {
+  border: 2px solid #38bdf8 !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+  z-index: 10;
+}
+
+/* Clip Themes by Type & Template */
+.clip-hook { background: linear-gradient(135deg, #ec4899, #be185d); }
+.clip-comparison { background: linear-gradient(135deg, #06b6d4, #0284c7); }
+.clip-stat-hero { background: linear-gradient(135deg, #8b5cf6, #6366f1); }
+.clip-feature-list { background: linear-gradient(135deg, #10b981, #059669); }
+.clip-callout { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.clip-outro { background: linear-gradient(135deg, #64748b, #475569); }
+.clip-review { background: linear-gradient(135deg, #14b8a6, #0f766e); }
+.clip-voice { background: linear-gradient(135deg, #3b82f6, #1d4ed8); opacity: 0.9; }
+.clip-caption { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.25); color: #f1f5f9; }
+.clip-bgm { background: linear-gradient(135deg, #a855f7, #7e22ce); opacity: 0.85; }
