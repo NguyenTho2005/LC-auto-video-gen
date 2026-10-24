@@ -2,11 +2,11 @@
 
 <div align="center">
 
-# 🎬 Auto Video Gen
+# 🎬 Auto Video Gen (Auto_GenVid)
 
 ### 🚀 Biến URL bài báo & Repo GitHub thành Video ngắn 9:16 chuyên nghiệp
 
-**1 câu lệnh với AI Coding· 0đ Voice (Edge TTS) · Không cần edit thủ công · Sẵn sàng đăng TikTok, Reels, Shorts**
+**1 câu lệnh với AI Coding · 0đ Voice (Edge TTS) · Không cần edit thủ công · Sẵn sàng đăng TikTok, Reels, Shorts**
 
 [![Stars](https://img.shields.io/github/stars/Cuongyd196/auto-video-gen?style=for-the-badge&logo=github&color=yellow)](https://github.com/Cuongyd196/auto-video-gen/stargazers)
 [![Forks](https://img.shields.io/github/forks/Cuongyd196/auto-video-gen?style=for-the-badge&logo=github&color=blue)](https://github.com/Cuongyd196/auto-video-gen/network/members)
@@ -14,12 +14,12 @@
 [![Node](https://img.shields.io/badge/node-22%2B-brightgreen?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/typescript-5%2B-blue?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-[**📖 Tài liệu chi tiết (Full Docs)**](README.full.md) · [**🇬🇧 English Docs**](README.en.md) · [**📺 Xem Demo**](https://youtube.com/shorts/X8P_5tsHy4o) · [**🚀 Cài đặt nhanh**](#-bắt-đầu-nhanh-3-bước) · [**💬 Cộng đồng**](#-cộng-đồng--các-mẫu-tạo-video-khác)
+[**📖 Tài liệu chi tiết (Full Docs)**](README.full.md) · [**🇬🇧 English Docs**](README.en.md) · [**📺 Xem Demo**](https://youtube.com/shorts/X8P_5tsHy4o) · [**🚀 Cài đặt nhanh**](#-cài-đặt--bắt-đầu-nhanh) · [**⚙️ Cách hoạt động**](#-cơ-chế-hoạt-động-how-it-works)
 
 </div>
 
 > 💡 **Bạn cần tài liệu chuyên sâu?**
-> Bản README này tóm tắt nhanh để bạn có thể bắt đầu tạo video trong 5 phút. Để xem đầy đủ kiến trúc, JSON Schema kịch bản, bảng tính chi phí và hướng dẫn nâng cao, vui lòng xem [👉 README.full.md](README.full.md).
+> Xem [👉 README.full.md](README.full.md) để biết đầy đủ kiến trúc, Zod JSON Schema, bảng tính chi phí và xử lý sự cố.
 
 ---
 
@@ -36,119 +36,198 @@ Toàn bộ video dưới đây được tạo **100% tự động** từ kịch 
 
 ---
 
-## ✨ Điểm nổi bật
+## ⚙️ Cơ chế hoạt động (How It Works)
 
-- ⚡ **Tự động hóa toàn diện**: Từ URL bài báo hoặc file `.txt`/`.md` → Kịch bản → Giọng đọc (TTS) → HTML Motion Graphics → Ghép âm thanh & SFX → Render file MP4 1080x1920 60FPS.
-- 🎙️ **Voice miễn phí 100% (Edge TTS)**: Tích hợp sẵn giọng đọc tiếng Việt của Microsoft Edge, **không tốn tiền, không cần API Key**. Đồng thời hỗ trợ **LucyLab** (voice cloning tiếng Việt kèm SRT), **Vbee** (chuẩn giọng tin tức Việt Nam) và **ElevenLabs** (đa ngôn ngữ cao cấp).
-- 🎨 **HTML-to-Video Engine (HyperFrames)**: Layout video được viết bằng HTML + CSS + GSAP animation. Dễ dàng can thiệp, tuỳ biến font chữ, màu sắc thương hiệu như lập trình web.
-- 🤖 **Thiết kế riêng cho AI Coding Agents**: Tối ưu sẵn cho **Google Antigravity IDE** (`.agents/skills`) và **Claude Code** (`.claude/skills`) qua lệnh `/create-news-video`. Bạn chỉ cần đưa URL bài báo hoặc file `.txt`, AI sẽ tự đọc hiểu, tóm tắt, chọn template đồ họa và chạy pipeline tạo video trọn gói từ A đến Z.
-- 📐 **6 Template dựng sẵn linh hoạt**:
-  - 🚨 `hook`: Tiêu đề giật gân, thu hút sự chú ý 3 giây đầu
-  - 🔀 `comparison`: So sánh 2 thông số / tính năng đối lập
-  - 📊 `stat-hero`: Nhấn mạnh số liệu thống kê lớn kèm ngữ cảnh
-  - 📋 `feature-list`: Danh sách tính năng, điểm nhấn dạng gạch đầu dòng
-  - 💬 `callout`: Trích dẫn nhận định, phát biểu nổi bật
-  - 🎬 `outro`: Kêu gọi theo dõi kênh và ghi nhận nguồn tin
+Hệ thống hoạt động theo pipeline tự động hóa 8 bước độc lập và lưu vết (idempotent), điều phối qua [`src/pipeline.ts`](src/pipeline.ts):
+
+```text
+[URL bài báo / Chủ đề / Text]
+         │
+         ▼ (Bước 1-2: AI Agent phân tích & chia cảnh)
+[script.json + script.txt]
+         │
+         ├───► [Tải ảnh đại diện bài báo: images/bg.jpg] (Bước 3)
+         │
+         └───► [Tổng hợp giọng đọc TTS từng cảnh: voice/scene-*.mp3] (Bước 4)
+                    │  (Tự động tái sử dụng nếu file audio đã tồn tại)
+                    ▼
+         [Ghép chuỗi audio + Mix hiệu ứng âm thanh SFX: voice.mp3] (Bước 5)
+                    │
+                    ▼
+         [Sinh HTML Composition: index.html + styles.css + animations.js] (Bước 6)
+                    │  (Layout 9:16 bằng HTML5, CSS3 và GSAP timeline)
+                    ▼
+         [HyperFrames Renderer: Puppeteer chụp frame + FFmpeg Encode] (Bước 7)
+                    │
+                    ▼
+         [Video hoàn thiện: output/<slug>/video.mp4 (1080x1920 30fps)] (Bước 8)
+```
+
+### 📐 6 Template Motion Graphics dựng sẵn
+
+Định nghĩa trong schema [`src/render/script-schema.ts`](src/render/script-schema.ts) và sinh mã tại [`src/render/html-composer.ts`](src/render/html-composer.ts):
+
+| Template | Mục đích sử dụng | Dữ liệu chính (`templateData`) |
+|---|---|---|
+| 🚨 **`hook`** | Cảnh mở đầu thu hút người xem trong 3 giây đầu | `headline`, `subhead`, `bgSrc`, `kenBurns` |
+| 🔀 **`comparison`** | So sánh 2 thông số hoặc 2 phương án đối lập | `left` (label, value), `right` (label, value, winner) |
+| 📊 **`stat-hero`** | Nhấn mạnh một con số thống kê đột phá lớn | `value` (số to), `label`, `context` (ngữ cảnh) |
+| 📋 **`feature-list`** | Danh sách điểm nhấn, gạch đầu dòng tính năng | `title`, `bullets` (mảng 1–4 dòng), `icon` |
+| 💬 **`callout`** | Trích dẫn câu nói, phát biểu, nhận định nổi bật | `statement` (câu trích dẫn), `tag` |
+| 🎬 **`outro`** | Thẻ kêu gọi bấm follow kênh TikTok + nguồn | `ctaTop`, `channelName`, `source` |
+
+### ⚡ Cơ chế Idempotent Caching (Tiết kiệm chi phí & thời gian)
+
+- Khi render lại hoặc đổi giao diện CSS/text, nếu file audio `voice/scene-<id>.mp3` đã có sẵn, pipeline sẽ **tự động tái sử dụng audio cũ** mà không gọi lại TTS API.
+- Nếu muốn thu âm lại một cảnh cụ thể, bạn chỉ cần xóa file `.mp3` của cảnh đó trong thư mục `voice/` rồi chạy lại lệnh.
 
 ---
 
-## 🚀 Bắt đầu nhanh (3 bước)
+## 🚀 Cài đặt & Bắt đầu nhanh
 
-### 1. Yêu cầu & Cài đặt
+### 1. Yêu cầu hệ thống
 
-Dự án sử dụng cơ chế **Agentic Video Generation**:
-- **Công cụ bắt buộc**: **Node.js 22+** và **FFmpeg** trên máy.
-- **AI Coding Agent (Khuyên dùng để tự động hoá 100%)**:
-  - 🪐 **[Antigravity IDE](https://antigravity.google)** — AI IDE của Google DeepMind.
-  - 🧠 **[Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code)** — Agentic CLI của Anthropic.
-  - Hoặc bất kỳ AI tool nào khác (Cursor, Codex, Windsurf) thông qua kịch bản JSON.
+- **Node.js**: Phiên bản 22 trở lên (`node --version`).
+- **FFmpeg & FFprobe**: Cần có sẵn trong `PATH` máy tính.
+  - *Ubuntu/Linux:* `sudo apt update && sudo apt install -y ffmpeg`
+  - *macOS:* `brew install ffmpeg`
+  - *Windows:* `winget install Gyan.FFmpeg`
+
+### 2. Cài đặt mã nguồn
 
 ```bash
 # Clone repository
 git clone https://github.com/Cuongyd196/auto-video-gen.git
 cd auto-video-gen
 
-# Cài đặt dependencies
+# Cài đặt các gói phụ thuộc
 npm install
+
+# Kiểm tra môi trường & kiểm thử
+npx tsc --noEmit  # Biên dịch TypeScript kiểm tra lỗi
+npm test          # Toàn bộ 60 unit tests phải PASS
 ```
 
-> **Cài đặt FFmpeg nếu máy chưa có:**
-> - **Windows:** `winget install Gyan.FFmpeg`
-> - **macOS:** `brew install ffmpeg`
-> - **Linux:** `sudo apt install ffmpeg`
-
-### 2. Thiết lập cấu hình
-
-Tạo file môi trường từ file mẫu:
+### 3. Thiết lập biến môi trường
 
 ```bash
 cp .env.example .env.local
 ```
 
-> 💡 **Mặc định dự án cấu hình Edge TTS hoàn toàn miễn phí, không cần bất kỳ API key nào.** Bạn có thể tạo video ngay lập tức!
-> 
-> *(Nếu muốn dùng LucyLab, Vbee hoặc ElevenLabs, mở file `.env.local` và điền key tương ứng).*
+> 💡 **Mặc định dự án sử dụng Edge TTS hoàn toàn miễn phí 0đ, không cần API Key!** Bạn có thể render video ngay lập tức mà không cần tài khoản hay thẻ tín dụng.
 
-### 3. Tạo video đầu tiên!
+---
 
-#### 🤖 Cách 1: Tự động hoàn toàn bằng AI Agent (Khuyên dùng)
+## 💻 Cách sử dụng (How To Use)
 
-##### 👉 Với Google Antigravity IDE
-Mở project trong Antigravity IDE, tại khung chat gõ lệnh:
+### 👉 Cách 1: Tự động hoàn toàn bằng AI Agent (Khuyên dùng)
+
+Dự án hỗ trợ sẵn bộ Skill cho Coding Agent:
+
+#### Trong Google Antigravity IDE:
+Tại khung trò chuyện của agent, gõ lệnh:
 ```text
-/create-news-video https://github.com/Cuongyd196/auto-compare-video
+/create-news-video https://vnexpress.net/bai-viet-cong-nghe-moi
 ```
 
-##### 👉 Với Anthropic Claude Code
-Mở terminal tại thư mục dự án và chạy:
+#### Trong Claude Code:
+Mở terminal và gõ:
 ```bash
 claude
-# Trong màn hình tương tác Claude Code, gõ:
-/create-news-video https://github.com/Cuongyd196/auto-compare-video
+# Tại dấu nhắc lệnh, gõ:
+/create-news-video https://vnexpress.net/bai-viet-cong-nghe-moi
 ```
 
-> 💡 **Quy trình AI tự động xử lý:**
-> 1. Đọc nội dung từ URL (repo GitHub, bài báo) hoặc file .txt tiếng Việt.
-> 2. Viết lời bình tiếng Việt chuẩn ngữ âm, chia cảnh và chọn template motion graphics.
-> 3. Tự gọi pipeline: sinh voice (Edge TTS Free) + render HyperFrames + mix nhạc & SFX.
-> 4. Xuất video `.mp4` cùng file `caption.txt` có sẵn hashtag đăng TikTok!
+**Quy trình AI tự động thực hiện:**
+1. Trích xuất nội dung từ bài báo hoặc file `.txt`.
+2. Tạo kịch bản chuẩn ngữ âm tiếng Việt, chọn 5–8 cảnh với template trực quan phù hợp.
+3. Chạy pipeline: tổng hợp voice + ghép SFX + HyperFrames render MP4.
+4. Xuất video hoàn thiện cùng file `caption.txt` chứa sẵn hashtag cho TikTok.
 
-#### 🛠️ Cách 2: Render trực tiếp từ file kịch bản (Thủ công)
+---
 
-Nếu không dùng AI, bạn có thể render từ file mẫu hoặc file `script.json` tự viết:
+### 👉 Cách 2: Chạy trực tiếp từ dòng lệnh (CLI)
+
+Bạn có thể chạy pipeline với file kịch bản có sẵn:
 
 ```bash
+# Render kịch bản mẫu có sẵn
 npm run pipeline -- tests/fixtures/sample-script-no-image.json
 ```
 
-🎉 **Kết quả**: Video thành phẩm sẽ được lưu tại `output/<slug>/<slug>.mp4`.
+**Hoặc tạo một video mới:**
+1. Tạo thư mục chứa video: `mkdir -p output/tin-cong-nghe`
+2. Tạo file `output/tin-cong-nghe/script.json` (tham khảo cấu trúc trong `tests/fixtures/sample-script-no-image.json`).
+3. Khởi chạy pipeline:
+   ```bash
+   npm run pipeline -- output/tin-cong-nghe/script.json
+   ```
+
+**Kết quả sau khi hoàn thành:**
+- 🎬 `output/<slug>/video.mp4`: Video hoàn thiện 1080×1920 (chuẩn 9:16, 30fps).
+- 🎙️ `output/<slug>/voice.mp3`: File âm thanh đã ghép hoàn chỉnh (có thể nhập vào CapCut).
+- 📝 `output/<slug>/script.txt`: Nội dung kịch bản văn bản.
+- 💬 `output/<slug>/voice/*.srt`: Các file phụ đề SRT cho từng cảnh.
 
 ---
 
-## 🎙️ Lựa chọn giọng đọc (TTS)
+### 👉 Cách 3: Chế độ Rerender (Sửa giao diện, giữ nguyên giọng đọc)
 
-Chuyển đổi provider linh hoạt trong `.env.local` qua biến `TTS_PROVIDER`:
-
-| Nhà cung cấp | Cấu hình | Chi phí | Đặc điểm |
-| :--- | :--- | :--- | :--- |
-| **Edge TTS** *(Mặc định)* | `TTS_PROVIDER=edge-tts` | **0đ (Miễn phí)** | Không cần API key, hỗ trợ giọng Nam/Nữ tiếng Việt tự nhiên |
-| **LucyLab** | `TTS_PROVIDER=lucylab` | Rẻ (~25k/1M ký tự) | Giọng voice cloning tiếng Việt tự nhiên, tự động kèm SRT subtitle |
-| **Vbee** | `TTS_PROVIDER=vbee` | Trả phí Vbee API | Giọng đọc truyền cảm, chuẩn phong cách phát thanh viên tin tức |
-| **ElevenLabs** | `TTS_PROVIDER=elevenlabs` | Trả phí ElevenLabs | Đa ngôn ngữ, chất lượng phòng thu điện ảnh, tuỳ biến cao |
-
----
-
-## 🛠️ Các lệnh thường dùng (CLI Cheatsheet)
+Nếu bạn chỉ chỉnh sửa CSS, font chữ, bố cục template hoặc thêm hiệu ứng mà **không muốn thu âm lại giọng đọc (tránh tốn chi phí và thời gian)**:
 
 ```bash
-# Chạy toàn bộ pipeline (TTS + Render visuals + Audio Mix)
-npm run pipeline -- output/<slug>/script.json
-
-# Chỉ render lại hình ảnh (giữ nguyên voice đã tạo, tiết kiệm thời gian)
 npm run rerender -- output/<slug>
+```
+Lệnh này sẽ dùng lại toàn bộ audio trong thư mục `voice/` và chỉ thực hiện render lại phần hình ảnh qua HyperFrames.
 
-# Chạy test kiểm thử toàn bộ hệ thống
-npm test
+---
+
+### 👉 Cách 4: Chạy máy chủ xem trước nội bộ (Web Server)
+
+Để kiểm tra giao diện và layout qua trình duyệt:
+
+```bash
+npm run serve
+# hoặc
+npm run web
+```
+Truy cập `http://localhost:3000` để xem trực tiếp các composition.
+
+---
+
+## 🎙️ Lựa chọn & Cấu hình giọng đọc (TTS)
+
+Thiết lập biến `TTS_PROVIDER` trong file `.env.local`:
+
+| Nhà cung cấp | Giá trị `TTS_PROVIDER` | Chi phí | Đặc điểm |
+| :--- | :--- | :--- | :--- |
+| **Edge TTS** *(Mặc định)* | `edge-tts` | **0đ (Miễn phí)** | Giọng đọc tự nhiên của Microsoft Edge (`vi-VN-HoaiMyNeural`, `vi-VN-NamMinhNeural`), không cần API key. |
+| **LucyLab** | `lucylab` | ~25k / 1M ký tự | Voice cloning tiếng Việt chất lượng cao, tự động xuất kèm phụ đề SRT. |
+| **Vbee** | `vbee` | Theo gói Vbee | Giọng đọc truyền cảm, phong cách phát thanh viên đài truyền hình Việt Nam. |
+| **ElevenLabs** | `elevenlabs` | Trả phí ElevenLabs | Giọng đọc điện ảnh chuẩn studio quốc tế. |
+
+**Tùy chỉnh giọng Edge TTS trong `.env.local`:**
+```dotenv
+TTS_PROVIDER=edge-tts
+EDGE_TTS_VOICE=vi-VN-HoaiMyNeural   # Hoặc vi-VN-NamMinhNeural
+EDGE_TTS_RATE=+0%                  # Tốc độ đọc: +10%, -5%...
+EDGE_TTS_PITCH=+0Hz                # Cao độ
+```
+
+---
+
+## 🎨 Tùy biến Theme & Nhận diện kênh TikTok
+
+### 1. Chọn Theme màu video
+Chỉnh sửa trong `.env.local`:
+- `VIDEO_THEME=dark-neon`: Nền tối công nghệ, điểm nhấn neon tím/xanh ngọc (mặc định).
+- `VIDEO_THEME=light-pro`: Nền sáng hiện đại, thanh lịch cho tin tức kinh doanh, giáo dục.
+
+### 2. Tùy biến thẻ Outro TikTok (Kênh của bạn)
+```dotenv
+TIKTOK_DISPLAY_NAME="Kênh Công Nghệ"
+TIKTOK_HANDLE="@congnghe24h"
+TIKTOK_AVATAR_URL="https://example.com/avatar.jpg"
 ```
 
 ---
@@ -157,52 +236,47 @@ npm test
 
 ```text
 auto-video-gen/
-├── .claude/skills/        # Claude Code skill tạo kịch bản tự động
+├── .agents/skills/        # Skill cho Google Antigravity IDE
+├── .claude/skills/        # Skill cho Anthropic Claude Code
 ├── src/
-│   ├── config.ts          # Đọc & validate biến môi trường (.env)
-│   ├── pipeline.ts        # Pipeline chính: TTS -> HyperFrames -> FFmpeg
-│   ├── schema.ts          # Zod schema định nghĩa cấu trúc kịch bản video
-│   ├── render/            # Template HTML/CSS/GSAP & HyperFrames composer
-│   ├── tts/               # Bộ kết nối TTS (Edge TTS, Vbee, ElevenLabs)
-│   └── audio/             # Ghép âm thanh, SFX, căn chỉnh timing bằng FFmpeg
-├── tests/                 # Unit tests (Vitest)
-├── output/                # Thư mục lưu video thành phẩm theo từng slug
-├── README.full.md         # 📖 Tài liệu hướng dẫn chi tiết toàn bộ dự án
-└── README.en.md           # 🇬🇧 English Documentation
+│   ├── cli.ts             # Điểm vào dòng lệnh (CLI entrypoint)
+│   ├── pipeline.ts        # Điều phối luồng xử lý 8 bước
+│   ├── config.ts          # Đọc & validate cấu hình .env.local
+│   ├── server.ts          # Web server phục vụ xem trước composition
+│   ├── render/
+│   │   ├── script-schema.ts      # Schema Zod định nghĩa kịch bản & 6 template
+│   │   ├── html-composer.ts      # Tạo DOM HTML, CSS và GSAP timeline
+│   │   ├── hyperframes-runner.ts # Gọi engine HyperFrames render MP4
+│   │   └── templates/            # File HTML mẫu cho 6 template
+│   ├── tts/               # Các client kết nối TTS (Edge TTS, LucyLab, Vbee, ElevenLabs)
+│   ├── assets/
+│   │   ├── audio-tools.ts        # Tiện ích FFmpeg cắt nối âm thanh
+│   │   ├── sfx-selector.ts       # Bộ chọn hiệu ứng âm thanh SFX tự động
+│   │   └── image-fetcher.ts      # Tải ảnh đại diện og:image
+│   └── utils/             # Tiện ích logger, tạo slug...
+├── tests/                 # 60 Unit tests với Vitest
+├── output/                # Thư mục chứa các dự án video thành phẩm
+├── README.md              # 📖 Hướng dẫn sử dụng nhanh
+├── README.full.md         # 📚 Hướng dẫn kỹ thuật chuyên sâu
+└── LICENSE                # Giấy phép nguồn mở MIT
 ```
 
 ---
 
-## 📖 Tài liệu chuyên sâu
+## 🧪 Kiểm thử và chất lượng mã nguồn
 
-Để tìm hiểu chi tiết hơn, vui lòng xem [**README.full.md**](README.full.md):
-- [Cấu trúc chi tiết của file kịch bản `script.json`](README.full.md#-cấu-trúc-scriptjson)
-- [Hướng dẫn tùy biến màu sắc, font chữ và animation CSS](README.full.md#-tùy-biến-giao-diện-theme--css)
-- [Bảng ước tính chi phí chi tiết](README.full.md#-ước-tính-chi-phí)
-- [Bảng tra cứu và xử lý sự cố (Troubleshooting)](README.full.md#-xử-lý-sự-cố-thường-gặp)
-- [Giải đáp các câu hỏi thường gặp (FAQ)](README.full.md#-faq)
+```bash
+# Kiểm tra tĩnh kiểu dữ liệu (Strict TypeScript)
+npx tsc --noEmit
 
----
-
-## 💬 Cộng đồng & Các mẫu tạo video khác
-
-Xem các mẫu tạo video khác tại:
-
-- Link repo tạo video từ 1 chủ đề với Remotion: 🔗 [github.com/Cuongyd196/remotion-cuongit-template](https://github.com/Cuongyd196/remotion-cuongit-template)
-- Link tạo video so sánh kiến thức: 🔗 [github.com/Cuongyd196/auto-compare-video](https://github.com/Cuongyd196/auto-compare-video)
-
-Mình tạo nhóm này cho các bạn trao đổi về Làm Video với AI nhé.  
-Với các repo mình công khai, có vướng mắc mình sẽ giải đáp cho các bạn.
-
-- 👥 Nhóm trên Facebook: [facebook.com/groups/1010029065373486](https://www.facebook.com/groups/1010029065373486/)
-- 👥 Nhóm trên Zalo: [zalo.me/g/8bfeotyh5ewtkzxmp5gt](https://zalo.me/g/8bfeotyh5ewtkzxmp5gt)
-
-Nếu hữu ích với các bạn thì cho mình 1 star GitHub nhé 🌟
+# Chạy toàn bộ 60 unit tests
+npm test
+```
 
 ---
 
 ## 📜 License & Lời cảm ơn
 
-- Dự án phát hành theo giấy phép [MIT](LICENSE).
-- Dự án là bản fork và phát triển mở rộng từ tác phẩm gốc của tác giả [Ho Quang Hai](https://github.com/hoquanghai/Auto-Create-Video).
+- Dự án phát hành theo giấy phép nguồn mở [MIT](LICENSE).
+- Phát triển mở rộng từ dự án gốc của tác giả [Ho Quang Hai](https://github.com/hoquanghai/Auto-Create-Video).
 - Bản cập nhật & duy trì bởi [CuongIT](https://www.facebook.com/cuongit96).
