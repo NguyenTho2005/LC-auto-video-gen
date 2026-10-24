@@ -18,3 +18,4 @@ Chạy và dán kết quả THẬT: `npx tsc --noEmit`, `npm test`, và một l�
 
 ## Mẫu báo cáo
 1. Đã làm gì (file tạo/sửa) 2. Cách chạy thử 3. Output tsc/test/ffprobe 4. Tiêu chí chấp nhận: đạt / chưa đạt / chưa kiểm tra (kèm bằng chứng) 5. Giả định và việc còn lại
+

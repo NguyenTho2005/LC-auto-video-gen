@@ -11,3 +11,4 @@ description: Xây web UI và timeline editor (mô hình + thao tác + undo/redo 
 4. `script.json` v2 (+ khối `timeline`) là nguồn sự thật; có `migrate` v1 → v2 và test. UI chỉ gọi `Command`, không tự sửa dữ liệu.
 5. Chức năng: preview đồng bộ audio, sửa `voiceText`/`templateData`, chọn template/media/theme/preset, tạo lại giọng từng cảnh, render có tiến độ và huỷ, mở project trong `output/`.
 6. Giữ CLI (`npm run pipeline`, `rerender`) hoạt động như cũ.
+

@@ -11,3 +11,4 @@ description: Sinh script.json bằng LLM ngay trong code (interface provider, va
 - Kiểm tra số liệu: mọi con số trong `voiceText`/`templateData` phải có trong văn bản nguồn (so khớp sau chuẩn hoá); số lạ bị gắn cờ trong `script.review.md`.
 - Lệnh `npm run script` dừng sau khi ghi `script.json`, `sources.json`, `script.review.md`; chỉ `npm run pipeline` mới render; cờ `--yes` bỏ qua dừng.
 - Không in key; không ghi toàn bộ nội dung nguồn vào log.
+

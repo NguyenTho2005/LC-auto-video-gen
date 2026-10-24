@@ -12,3 +12,4 @@ description: Thêm hoặc sửa template HTML/CSS/GSAP trong lớp render HyperF
 - Kiểm tra bằng cách render một frame (hoặc video 3 giây) và xem ảnh chụp; ghi lại trong báo cáo.
 - Tôn trọng safe-zone TikTok (cấu hình ở M5): không đặt nội dung quan trọng vào ~20% đáy và cạnh phải.
 - Không đổi hành vi template cũ trừ khi có yêu cầu rõ.
+

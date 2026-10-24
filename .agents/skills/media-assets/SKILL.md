@@ -11,3 +11,4 @@ description: Tải/gắn ảnh, video, screenshot vào cảnh, lưu credit và g
 - `og:image` chỉ dùng khi có cờ bật rõ ràng; ghi cảnh báo bản quyền vào `media.json`.
 - Crop/scale về 9:16 (`cover`/`contain`); ảnh tĩnh có Ken Burns nhẹ, không giật, deterministic.
 - Giới hạn kích thước/định dạng tải về; kiểm tra tệp hợp lệ trước khi dùng.
+

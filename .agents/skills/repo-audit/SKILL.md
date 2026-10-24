@@ -12,3 +12,4 @@ description: Kiểm tra hiện trạng thật của repo Auto_GenVid (luồng, s
 5. Viết `docs/audit.md`: sơ đồ luồng (mermaid), bảng module, schema hiện tại, kết luận cho từng mâu thuẫn kèm đường dẫn file/dòng.
 
 Chỉ nêu điều đã xác minh; suy đoán phải ghi rõ là suy đoán. Không đổi hành vi code trong bước audit.
+

@@ -11,3 +11,4 @@ description: Thêm trường/template mới vào schema Zod của script.json m�
 - Thông báo lỗi Zod phải đủ rõ để LLM/người dùng sửa được (đường dẫn trường + lý do).
 - Kiểu TypeScript suy từ Zod (`z.infer`), không khai báo trùng.
 - Sau khi đổi schema: cập nhật skill `create-news-video` (để LLM biết trường mới), tài liệu README liên quan và `.env.example` nếu có.
+

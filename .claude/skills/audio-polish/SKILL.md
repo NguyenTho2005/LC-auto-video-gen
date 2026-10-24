@@ -12,3 +12,4 @@ description: BGM với ducking, từ điển phát âm, chuyển cảnh, preset 
 - Safe-zone TikTok: cấu hình lề; chế độ vẽ lưới khi preview.
 - Branding: `config/brand.json` thay cho giá trị mặc định của tác giả gốc; thiếu cấu hình thì không hiển thị thẻ follow hoặc dùng placeholder trung tính.
 - Kiểm tra mức âm bằng `ffmpeg`/`ffprobe` trong một test tích hợp ngắn.
+

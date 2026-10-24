@@ -11,3 +11,4 @@ description: Kiểm tra trước khi báo hoàn thành một milestone (tsc, tes
 4. Đối chiếu từng tiêu chí chấp nhận của milestone trong `PRD2.md`: đạt / chưa đạt / chưa kiểm tra, kèm lệnh và đường dẫn tệp làm bằng chứng.
 5. Kiểm tra: không có API key trong mã/log; `.env.example` đã cập nhật; README/`docs` cập nhật; `LICENSE` nguyên vẹn.
 6. Liệt kê rõ việc còn lại và giả định. Không tuyên bố "xong" nếu còn tiêu chí chưa đạt.
+

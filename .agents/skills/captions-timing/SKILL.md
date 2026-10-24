@@ -10,3 +10,4 @@ description: Tạo caption đồng bộ từng từ từ timestamp TTS, lớp ca
 - Hiển thị bằng lớp HTML/CSS/GSAP trong composition: highlight từ đang đọc, nằm trong safe-zone, font hỗ trợ tiếng Việt (đóng gói cục bộ nếu có thể).
 - SRT: UTF-8, đánh số từ 1, `HH:MM:SS,mmm --> HH:MM:SS,mmm`. Parser chịu BOM, CRLF, cue nhiều dòng, báo lỗi rõ khi sai.
 - Test: round-trip cue → SRT → cue (dung sai 1 ms); độ lệch cue ≤ 150 ms trên dữ liệu timestamp giả; cue không chồng lấn và không vượt tổng thời lượng.
+
