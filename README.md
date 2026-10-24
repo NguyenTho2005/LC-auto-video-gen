@@ -25,7 +25,7 @@
 
 ## 🎥 Xem Demo Video Hoàn Thiện
 
-Toàn bộ video dưới đây được tạo **100% tự động** từ kịch bản text — Voice TTS + Visuals HTML/CSS + Hiệu ứng SFX/BGM, không qua bước edit video thủ công:
+Toàn bộ video dưới đây được tạo **100% tự động** từ kịch bản text — Voice TTS + Visuals HTML/CSS + Hiệu ứng SFX, không qua bước edit video thủ công:
 
 | 🕸️ Demo CodeGraph | 🖥️ Demo OpenScreen |
 | :---: | :---: |
@@ -43,12 +43,12 @@ Toàn bộ video dưới đây được tạo **100% tự động** từ kịch 
 - 🎨 **HTML-to-Video Engine (HyperFrames)**: Layout video được viết bằng HTML + CSS + GSAP animation. Dễ dàng can thiệp, tuỳ biến font chữ, màu sắc thương hiệu như lập trình web.
 - 🤖 **Thiết kế riêng cho AI Coding Agents**: Tối ưu sẵn cho **Google Antigravity IDE** (`.agents/skills`) và **Claude Code** (`.claude/skills`) qua lệnh `/create-news-video`. Bạn chỉ cần đưa URL bài báo hoặc file `.txt`, AI sẽ tự đọc hiểu, tóm tắt, chọn template đồ họa và chạy pipeline tạo video trọn gói từ A đến Z.
 - 📐 **6 Template dựng sẵn linh hoạt**:
-  - 🚨 `breaking-news`: Tin nóng, sự kiện giật gân
-  - 📊 `stat-callout`: Nhấn mạnh số liệu, biểu đồ
-  - 🔀 `split-screen`: So sánh 2 đối tượng hoặc chèn ảnh minh họa bài viết
-  - 💬 `quote-card`: Trích dẫn phát biểu, châm ngôn
-  - 📋 `listicle`: Danh sách điểm tin, bảng xếp hạng
-  - 🔢 `big-number`: Số liệu thống kê ấn tượng
+  - 🚨 `hook`: Tiêu đề giật gân, thu hút sự chú ý 3 giây đầu
+  - 🔀 `comparison`: So sánh 2 thông số / tính năng đối lập
+  - 📊 `stat-hero`: Nhấn mạnh số liệu thống kê lớn kèm ngữ cảnh
+  - 📋 `feature-list`: Danh sách tính năng, điểm nhấn dạng gạch đầu dòng
+  - 💬 `callout`: Trích dẫn nhận định, phát biểu nổi bật
+  - 🎬 `outro`: Kêu gọi theo dõi kênh và ghi nhận nguồn tin
 
 ---
 

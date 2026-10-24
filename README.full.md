@@ -288,7 +288,7 @@ cp .env.example .env.local
 node --version       # ≥ 22
 ffmpeg -version      # in version OK
 ffprobe -version
-npm test             # all 54 tests should pass
+npm test             # all 60 tests should pass
 ```
 
 ### Cài FFmpeg
@@ -438,7 +438,7 @@ output/<slug>-<timestamp>/
 ├── images/bg.jpg              # og:image đã tải (nếu có)
 ├── voice/
 │   ├── scene-hook.mp3         # TTS từng scene (idempotent — skip nếu đã có)
-│   ├── scene-hook.srt         # SRT subtitle (chỉ khi TTS_PROVIDER=lucylab)
+│   ├── scene-hook.srt         # SRT subtitle (khi TTS_PROVIDER=edge-tts hoặc lucylab)
 │   └── scene-body-1.mp3
 ├── voice-raw.mp3              # Voice concat, chưa mix SFX (intermediate)
 ├── voice.mp3                  # Final audio đã mix SFX (cho CapCut)

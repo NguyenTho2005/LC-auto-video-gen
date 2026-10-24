@@ -285,7 +285,7 @@ cp .env.example .env.local
 node --version       # ≥ 22
 ffmpeg -version      # any version OK
 ffprobe -version
-npm test             # 54 tests should pass
+npm test             # all 60 tests should pass
 ```
 
 ### Install FFmpeg
@@ -435,7 +435,7 @@ output/<slug>-<timestamp>/
 ├── images/bg.jpg              # og:image (if URL had one)
 ├── voice/
 │   ├── scene-hook.mp3         # TTS per scene (idempotent — skipped if exists)
-│   ├── scene-hook.srt         # SRT subtitles (LucyLab only)
+│   ├── scene-hook.srt         # SRT subtitles (Edge TTS or LucyLab)
 │   └── scene-body-1.mp3
 ├── voice-raw.mp3              # Concatenated voices, no SFX (intermediate)
 ├── voice.mp3                  # Final audio with SFX mixed in (for CapCut)
