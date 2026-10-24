@@ -16,6 +16,8 @@ import { groupWordsIntoCues } from "./captions/grouper.js";
 import { generateSrt, parseSrt } from "./captions/srt.js";
 import { estimateWordTimings } from "./captions/estimator.js";
 import type { TimedWord, CaptionCue } from "./captions/types.js";
+import { processSceneMedia } from "./media/media-manager.js";
+import { PexelsProvider, PixabayProvider } from "./media/stock-provider.js";
 
 const TOTAL_STEPS = 8;
 const DURATION_MIN_SEC = 48;
@@ -68,9 +70,21 @@ export async function runPipeline(scriptPath: string): Promise<void> {
   await writeFile(join(outputDir, "script.txt"), fullText);
 
   // STEP 3 + 4 in parallel
-  log.step(3, TOTAL_STEPS, "Fetch og:image (parallel) + Step 4 TTS");
+  log.step(3, TOTAL_STEPS, "Process media assets & og:image (parallel) + Step 4 TTS");
   const imgPath = join(outputDir, "images", "bg.jpg");
-  const imgPromise = fetchImage(script.metadata.source.image, imgPath);
+  // Only use og:image as background if explicitly enabled in metadata (M2 compliance)
+  const allowOgImage = script.metadata.useOgImage || false;
+  const imgPromise = allowOgImage
+    ? fetchImage(script.metadata.source.image, imgPath)
+    : Promise.resolve({ success: false, reason: "og:image disabled by default for copyright compliance" });
+
+  const stockProvider = process.env.PEXELS_API_KEY
+    ? new PexelsProvider(process.env.PEXELS_API_KEY)
+    : process.env.PIXABAY_API_KEY
+    ? new PixabayProvider(process.env.PIXABAY_API_KEY)
+    : undefined;
+
+  const mediaPromise = processSceneMedia(script, outputDir, stockProvider);
 
   // STEP 4
   const ttsClient = createTtsClient(cfg);
@@ -141,8 +155,9 @@ export async function runPipeline(scriptPath: string): Promise<void> {
     }),
   );
 
-  const [imgResult, sceneAudio] = await Promise.all([
+  const [imgResult, mediaResult, sceneAudio] = await Promise.all([
     imgPromise,
+    mediaPromise,
     Promise.all(sceneAudioPromises),
   ]);
 
@@ -277,6 +292,7 @@ export async function runPipeline(scriptPath: string): Promise<void> {
     tiktokAvatarRelPath: ttAvatarFile,
     outroHoldSec: OUTRO_HOLD_SEC,
     captionCues: allCues,
+    mediaMap: mediaResult.mediaMap,
   });
 
   // hyperframes expects: index.html (NOT composition.html), hyperframes.json, meta.json in DIR

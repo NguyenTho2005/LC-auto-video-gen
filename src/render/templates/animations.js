@@ -32,6 +32,12 @@ window.__timelines["news-video"] = tl;
     tl.set(scene, { opacity: 1 }, start);
     tl.set(scene, { opacity: 0 }, start + dur);
 
+    // Ken Burns animation for scene media (M2)
+    const mediaImg = scene.querySelector(".scene-media-img.fx-kenburns");
+    if (mediaImg) {
+      tl.fromTo(mediaImg, { scale: 1.0, x: 0 }, { scale: 1.15, x: -25, duration: dur, ease: "none" }, start);
+    }
+
     if (layout === "hook") {
       animateHook(scene, tl, start);
     } else if (layout === "comparison") {

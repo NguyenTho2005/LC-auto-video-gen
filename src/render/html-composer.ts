@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { Script, TemplateDataType } from "./script-schema.js";
 import type { TiktokConfig } from "../config.js";
 import type { CaptionCue } from "../captions/types.js";
+import type { MediaAssetRecord } from "../media/media-manager.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TPL_DIR = join(__dirname, "templates");
@@ -40,6 +41,8 @@ export interface ComposeArgs {
   outroHoldSec?: number;
   /** Optional caption cues for word-by-word synced subtitles (M1). */
   captionCues?: CaptionCue[];
+  /** Optional resolved media records mapped by sceneId (M2). */
+  mediaMap?: Record<string, MediaAssetRecord>;
 }
 
 export function composeHtml(args: ComposeArgs): string {
@@ -64,7 +67,8 @@ export function composeHtml(args: ComposeArgs): string {
 
   // Render scenes
   const sceneHtml = timing.map(({ scene, start, duration }) => {
-    return renderScene(scene, start, duration, bgImageRelPath, tiktok, tiktokAvatar);
+    const mediaRecord = args.mediaMap?.[scene.id];
+    return renderScene(scene, start, duration, bgImageRelPath, tiktok, tiktokAvatar, mediaRecord);
   }).join("\n");
 
   // Persistent shell — uses tiktok handle in footer and avatar in header
@@ -146,6 +150,7 @@ function renderScene(
   bgImageRelPath: string | null,
   tiktok: TiktokConfig,
   tiktokAvatarRelPath: string,
+  mediaRecord?: MediaAssetRecord,
 ): string {
   const td = scene.templateData;
 
@@ -183,7 +188,7 @@ function renderScene(
     }
   }
 
-  return buildScene(scene, start, duration, layoutName, inner);
+  return buildScene(scene, start, duration, layoutName, inner, mediaRecord);
 }
 
 // ── HOOK SCENE ─────────────────────────────────────────────────────────────
@@ -329,12 +334,38 @@ function buildScene(
   duration: number,
   layoutName: string,
   innerHtml: string,
+  mediaRecord?: MediaAssetRecord,
 ): string {
+  let mediaHtml = "";
+  if (mediaRecord) {
+    const fitClass = mediaRecord.fit === "contain" ? "fit-contain" : "fit-cover";
+    const fxClass = mediaRecord.fx === "kenburns" ? "fx-kenburns" : "fx-none";
+    if (mediaRecord.type === "video") {
+      mediaHtml = `
+  <div class="scene-media-wrapper">
+    <video class="scene-media-video ${fitClass}" src="${escapeHtml(mediaRecord.localRelPath)}" autoplay muted loop playsinline></video>
+    <div class="media-overlay"></div>
+  </div>`;
+    } else {
+      mediaHtml = `
+  <div class="scene-media-wrapper">
+    <img class="scene-media-img ${fitClass} ${fxClass}" src="${escapeHtml(mediaRecord.localRelPath)}" alt="" />
+    <div class="media-overlay"></div>
+  </div>`;
+    }
+  }
+
+  const creditHtml = mediaRecord?.credit
+    ? `<div class="media-credit-badge">Nguồn: ${escapeHtml(mediaRecord.credit)}</div>`
+    : "";
+
   return `
 <div class="scene clip" id="scene-${scene.id}"
      data-start="${start.toFixed(2)}" data-duration="${duration.toFixed(2)}" data-active="0"
      data-layout="${layoutName}">
+  ${mediaHtml}
   ${innerHtml}
+  ${creditHtml}
 </div>`.trim();
 }
 

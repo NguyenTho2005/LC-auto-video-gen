@@ -19,6 +19,7 @@ import { composeHtml } from "./src/render/html-composer.js";
 import { renderWithHyperframes } from "./src/render/hyperframes-runner.js";
 import { parseSrt } from "./src/captions/srt.js";
 import type { CaptionCue } from "./src/captions/types.js";
+import type { MediaAssetRecord } from "./src/media/media-manager.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TPL_DIR = join(__dirname, "src", "render", "templates");
@@ -142,6 +143,17 @@ async function main() {
     } catch {}
   }
 
+  // Load optional media manifest (M2)
+  let mediaMap: Record<string, MediaAssetRecord> | undefined;
+  const mediaJsonPath = join(outputDir, "media.json");
+  if (existsSync(mediaJsonPath)) {
+    try {
+      const records: MediaAssetRecord[] = JSON.parse(await readFile(mediaJsonPath, "utf8"));
+      mediaMap = {};
+      for (const r of records) mediaMap[r.sceneId] = r;
+    } catch {}
+  }
+
   // Compose HTML
   const html = composeHtml({
     script,
@@ -153,6 +165,7 @@ async function main() {
     tiktokAvatarRelPath: ttAvatarFile,
     outroHoldSec: 3,
     captionCues,
+    mediaMap,
   });
   await writeFile(join(outputDir, "index.html"), html);
   await writeFile(join(outputDir, "hyperframes.json"), JSON.stringify(HYPERFRAMES_CONFIG, null, 2));

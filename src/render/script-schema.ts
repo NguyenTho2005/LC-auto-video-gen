@@ -81,6 +81,18 @@ const SfxSpec = z.object({
 
 export type SfxSpecType = z.infer<typeof SfxSpec>;
 
+// ── Media schema (M2) ──────────────────────────────────────────────────────
+export const MediaSpec = z.object({
+  type: z.enum(["image", "video", "screenshot"]),
+  src: z.string().min(1),
+  fit: z.enum(["cover", "contain"]).default("cover"),
+  fx: z.enum(["none", "kenburns"]).default("kenburns"),
+  credit: z.string().optional(),
+  license: z.string().optional(),
+});
+
+export type MediaSpecType = z.infer<typeof MediaSpec>;
+
 // ── Scene schema ───────────────────────────────────────────────────────────
 
 const Scene = z.object({
@@ -90,6 +102,8 @@ const Scene = z.object({
   templateData: TemplateData,
   /** Optional sound effect override (else pipeline picks per template) */
   sfx: SfxSpec.optional(),
+  /** Optional media asset (image/video/screenshot) for this scene (M2) */
+  media: MediaSpec.optional(),
 });
 
 // ── Caption schema (M1) ────────────────────────────────────────────────────
@@ -114,6 +128,8 @@ export const ScriptSchema = z.object({
       image: z.string().url().nullable(),
     }),
     channel: z.string().min(1),
+    /** Explicit flag to allow using og:image (default false) */
+    useOgImage: z.boolean().optional(),
   }),
   voice: z.object({
     provider: z.string().min(1),

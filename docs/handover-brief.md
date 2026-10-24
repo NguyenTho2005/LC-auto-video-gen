@@ -2,7 +2,7 @@
 
 > **Dành cho AI Agent tiếp nhận dự án.**  
 > Ngày cập nhật: 24/10/2026.  
-> Trạng thái hiện tại: **Đã hoàn thành 100% Milestone M0 (Audit & Baseline) và Milestone M1 (Caption & SRT)** trên nhánh `feat/m1-captions`.
+> Trạng thái hiện tại: **Đã hoàn thành 100% Milestone M0 (Audit), M1 (Caption & SRT), M2 (Media thật)** trên nhánh `feat/m2-media`.
 
 ---
 
@@ -15,6 +15,7 @@
   - Ghép hiệu ứng âm thanh SFX tự động và sắp tới là BGM có ducking theo giọng nói.
   - Render đồ hoạ chuyển động (Motion Graphics) bằng công nghệ web: HTML5, CSS3, GSAP animation và chụp frame bằng Puppeteer/HyperFrames, encode bằng FFmpeg.
   - Phụ đề karaoke hiển thị theo từng từ (word-level sync), nhập/xuất file SRT chuẩn UTF-8.
+  - Quản lý media thật: ảnh/video stock (Pexels, Pixabay), chụp ảnh màn hình bài báo tự động qua Puppeteer, hiệu ứng Ken Burns mượt mà và quản lý credit/license trong `media.json`.
   - Lộ trình phát triển qua 8 milestone: **M0 → M7** (quy định chi tiết tại [`PRD2.md`](../PRD2.md)).
   - **Quy tắc bất di bất dịch:** Làm việc **trực tiếp trên TypeScript/Node.js**, KHÔNG viết lại bằng ngôn ngữ khác, giữ nguyên bản quyền/ghi công tác giả gốc và đảm bảo **tương thích ngược 100%** với các file `script.json` phiên bản cũ.
 
@@ -29,8 +30,8 @@
   - [`GSAP`](https://gsap.com/) (`^3.14.2`): Quản lý timeline animation mượt mà cho các phần tử DOM.
   - [`FFmpeg`](https://ffmpeg.org/): Nối audio, mix SFX, encode video H.264/AAC.
 - **Validation & Data Schema:** [`Zod`](https://zod.dev/) (`^4.3.6`) định nghĩa `ScriptSchema` và 6 template layout.
-- **Kiểm thử (Test Runner):** [`Vitest`](https://vitest.dev/) (`^4.1.5`) với 15 test suites (**77/77 tests passed**, mock HTTP qua `nock`).
-- **Phụ thuộc âm thanh:** `edge-tts-universal`, `axios`, `dotenv`, `p-limit`.
+- **Kiểm thử (Test Runner):** [`Vitest`](https://vitest.dev/) (`^4.1.5`) với 18 test suites (**86/86 tests passed**, mock HTTP qua `nock`).
+- **Phụ thuộc âm thanh & mạng:** `edge-tts-universal`, `puppeteer-core`, `axios`, `dotenv`, `p-limit`.
 
 ### 2.2. Cấu trúc thư mục chính
 ```text
@@ -53,17 +54,21 @@ AUTO_GEN_VIDEO/
 │   │   ├── grouper.ts      # Gom 2–6 từ/cue, min duration 0.4s, ngắt dấu câu
 │   │   ├── estimator.ts    # Fallback phân bổ ký tự cho provider không có timestamp
 │   │   └── import-cli.ts   # npm run captions:import -- <output-dir> <file.srt>
+│   ├── media/              # Module Quản lý Media Assets (M2)
+│   │   ├── stock-provider.ts  # StockProvider (Pexels, Pixabay, FakeStockProvider)
+│   │   ├── screenshot.ts      # Chụp ảnh URL web tự động bằng Puppeteer
+│   │   └── media-manager.ts   # Tải media, quản lý crop/fit/fx, xuất media.json
 │   ├── config.ts           # Đọc & validate biến môi trường (.env.local)
 │   ├── server.ts           # Server Express xem trước composition
 │   ├── render/
-│   │   ├── script-schema.ts      # Zod schema cho ScriptSchema (kèm captions tùy chọn)
-│   │   ├── html-composer.ts      # Sinh DOM HTML, CSS, nhúng timeline GSAP & captions
+│   │   ├── script-schema.ts      # Zod schema cho ScriptSchema (captions & media tùy chọn)
+│   │   ├── html-composer.ts      # Sinh DOM HTML, CSS, nhúng timeline GSAP & captions & media
 │   │   ├── hyperframes-runner.ts # Wrapper gọi hyperframes CLI
 │   │   └── templates/            # base.html.tmpl, animations.js, styles.css, styles.light-pro.css
-│   ├── tts/                # Edge TTS, LucyLab, ElevenLabs, Vbee clients (hỗ trợ TtsTimingResult)
+│   ├── tts/                # Edge TTS, LucyLab, ElevenLabs, Vbee clients
 │   ├── assets/             # audio-tools.ts (FFmpeg), sfx-selector.ts, image-fetcher.ts
 │   └── utils/              # logger.ts, slug.ts, script-generator.ts
-├── tests/                  # 15 file Vitest (*.test.ts)
+├── tests/                  # 18 file Vitest (*.test.ts)
 └── output/                 # Thư mục chứa video thành phẩm theo slug
 ```
 
@@ -77,75 +82,67 @@ AUTO_GEN_VIDEO/
 - Đã commit trên nhánh `chore/agent-kit` (`ff39bc3`).
 
 ### 3.2. Milestone M0 — Audit và Baseline (Bước 3 — nhánh `feat/m0-audit`)
-- **Tài liệu Audit:** Hoàn thành [`docs/audit.md`](audit.md) làm rõ luồng chạy và giải quyết triệt để 5 điểm mâu thuẫn tài liệu:
-  1. *Tên template:* Mã nguồn thực tế có đúng 6 templates: `hook`, `comparison`, `stat-hero`, `feature-list`, `callout`, `outro`.
-  2. *Hỗ trợ SRT:* Cả Edge TTS và LucyLab đều tạo được SRT cho từng cảnh; ElevenLabs và Vbee không có SRT.
-  3. *Đường dẫn Schema:* Schema duy nhất nằm tại `src/render/script-schema.ts`.
-  4. *Số lượng Unit Tests:* Chính xác là 60 tests passed ở baseline.
-  5. *BGM vs SFX:* Hiện tại chỉ có SFX; tính năng BGM + ducking sẽ phát triển ở M5.
+- **Tài liệu Audit:** Hoàn thành [`docs/audit.md`](audit.md) làm rõ luồng chạy và giải quyết triệt để 5 điểm mâu thuẫn tài liệu (tên template, SRT, schema path, số lượng tests, BGM vs SFX).
 - **Đồng bộ tài liệu:** Đã cập nhật chính xác [`README.md`](../README.md), [`README.full.md`](../README.full.md), [`README.en.md`](../README.en.md).
-- **Baseline kiểm thử & Render thực tế:**
-  - `npx tsc --noEmit`: 0 lỗi.
-  - `npm test`: 11/11 files passed, 60/60 tests passed.
-  - Render pipeline mẫu baseline: `output/baseline-test/video.mp4` (1080×1920, H.264/AAC).
+- **Baseline kiểm thử & Render thực tế:** `npx tsc --noEmit` (0 lỗi), `npm test` (60/60 tests passed), render baseline `output/baseline-test/video.mp4` thành công.
 
 ### 3.3. Milestone M1 — Caption và SRT (Bước 4 — nhánh `feat/m1-captions`)
-- **Trích xuất nguồn thời gian (Word Timings):**
-  - Edge TTS: Tận dụng `WordBoundary` của `edge-tts-universal` (chuyển đổi đơn vị ticks 100ns sang ms, độ lệch 0ms ≤ 150ms).
-  - LucyLab: Tự động phân tích file SRT tải về từ server.
-  - ElevenLabs / Vbee: Bộ ước lượng tỷ lệ theo ký tự (`estimateWordTimings`), gắn cờ `accuracy: "low"`.
-- **Bộ gom từ thành Cue (`src/captions/grouper.ts`):**
-  - Gom 2–6 từ/cue, tối đa 2 dòng, ngắt theo dấu câu, tối thiểu ~400ms/cue, căn chỉnh offset chính xác theo thời điểm bắt đầu cảnh trong video.
-- **Hiển thị Motion Graphics bằng HTML/CSS/GSAP:**
-  - Tích hợp lớp Caption vào `src/render/html-composer.ts` và `src/render/templates/animations.js`.
-  - Hiệu ứng highlight chữ đang nói (active word pop-up & glow), nằm trong vùng an toàn TikTok (safe-zone cách đáy ~20%).
-  - Hỗ trợ đầy đủ cho cả hai theme: `styles.css` (dark-neon với chữ trắng viền đen, highlight vàng neon) và `styles.light-pro.css` (chữ xanh đậm viền trắng, highlight xanh dương).
-- **Xuất & Nhập SRT:**
-  - Tự động xuất `captions.srt` và `captions.json` toàn bộ video chuẩn UTF-8 sau khi hoàn thành audio.
-  - Lệnh CLI `npm run captions:import -- <output-dir> <file.srt>` cho phép ghi đè phụ đề thủ công, hỗ trợ UTF-8 BOM, CRLF, cue nhiều dòng và tự động cập nhật lại `index.html`.
-- **Tương thích ngược & Schema:**
-  - Mở rộng `ScriptSchema` với trường tùy chọn `captions?: { enabled: boolean; style: string }`.
-  - Kịch bản cũ v1 không có trường này vẫn chạy bình thường (mặc định tắt caption nếu không chỉ định).
-- **Kết quả nghiệm thu M1:**
+- **Trích xuất nguồn thời gian (Word Timings):** WordBoundary của Edge TTS (độ lệch 0ms ≤ 150ms), LucyLab SRT parser, fallback phân bổ theo ký tự cho ElevenLabs/Vbee.
+- **Bộ gom từ thành Cue (`src/captions/grouper.ts`):** 2–6 từ/cue, tối đa 2 dòng, ngắt dấu câu, min ~400ms, offset video chuẩn xác.
+- **Hiển thị Motion Graphics bằng HTML/CSS/GSAP:** Caption layer với active-word pop-up & glow, safe-zone TikTok (~20% từ đáy), hỗ trợ cả `dark-neon` và `light-pro`.
+- **Xuất & Nhập SRT:** Tự động xuất `captions.srt` & `captions.json`; lệnh CLI `npm run captions:import -- <output-dir> <file.srt>`.
+- **Kết quả:** 15 test files, **77/77 tests passed**, render mẫu `output/m1-sample/video.mp4` (106.4 MB, 31.0s, 1080×1920 30fps).
+
+### 3.4. Milestone M2 — Media thật (Bước 5 — nhánh `feat/m2-media`)
+- **Schema Zod:** Thêm trường `media` tùy chọn cho mỗi cảnh: `type` (`image` | `video` | `screenshot`), `src`, `fit` (`cover` | `contain`), `fx` (`none` | `kenburns`), `credit`, `license`. Thêm `useOgImage: boolean` (mặc định false).
+- **Stock Provider Interface:** [`src/media/stock-provider.ts`](../src/media/stock-provider.ts) gồm `PexelsProvider`, `PixabayProvider`, và `FakeStockProvider` cho unit test (không gọi API thật).
+- **Chụp ảnh màn hình URL:** [`src/media/screenshot.ts`](../src/media/screenshot.ts) tự động tìm kiếm Chromium của HyperFrames và chụp ảnh độ nét cao tỉ lệ 9:16 bằng `puppeteer-core`.
+- **Quản lý Media Asset & Bản quyền:** [`src/media/media-manager.ts`](../src/media/media-manager.ts) tải/sao chép media về `output/<slug>/media/`, tự động sinh manifest bản quyền `media.json`. Cảnh không có media hoặc lỗi tải tự động rơi về nền gradient mặc định.
+- **Hiển thị & Animation:** DOM media layer trong [`src/render/html-composer.ts`](../src/render/html-composer.ts), hiệu ứng Ken Burns mượt mà và huy hiệu nguồn credit góc màn hình.
+- **Kết quả nghiệm thu M2:**
   - `npx tsc --noEmit`: 0 lỗi.
-  - `npm test`: 15 test files, **77/77 tests passed 100%**.
-  - Render video mẫu thành công: `output/m1-sample/video.mp4` (106.4 MB, 31.0s, 1080×1920 30fps H.264, audio AAC stereo 48000Hz, ffprobe kiểm tra đạt chuẩn).
+  - `npm test`: 18 test files, **86/86 tests passed 100%**.
+  - Render video mẫu có media: `output/m2-sample/video.mp4` (106.8 MB, 31.0s, 1080×1920 30fps H.264, audio AAC stereo 48000Hz, ffprobe kiểm tra đạt chuẩn).
 
 ---
 
 ## 4. Trạng thái hiện tại của dự án
 
-- **Nhánh Git hiện tại:** `feat/m1-captions`.
-- **Trạng thái mã nguồn:** Biên dịch sạch 0 lỗi TypeScript, 77/77 tests Vitest pass.
-- **Tiêu chí chấp nhận M1:** Đạt 100% cả 5 tiêu chí:
-  1. Caption nhìn thấy được, bật/tắt được theo cấu hình script.
-  2. Độ lệch cue so với từ đọc ≤ 150 ms (thực tế 0 ms trên WordBoundary).
-  3. Round-trip cue → SRT → cue giữ nguyên số lượng và thời gian (dung sai ≤ 1 ms).
-  4. Parse tốt tiếng Việt có dấu, UTF-8 BOM, CRLF, cue nhiều dòng.
-  5. Script cũ không có `captions` vẫn parse và render như trước (tương thích ngược hoàn toàn).
+- **Nhánh Git hiện tại:** `feat/m2-media`.
+- **Trạng thái mã nguồn:** 0 lỗi TypeScript, 86/86 tests Vitest passed.
+- **Tiêu chí chấp nhận M2:** Đạt 100%:
+  1. Cảnh có media hiển thị đúng 9:16 (`cover`/`contain`), hiệu ứng Ken Burns mượt không giật.
+  2. File `media.json` đầy đủ thông tin nguồn, tác giả, giấy phép.
+  3. Cờ `og:image` chỉ bật khi có yêu cầu rõ ràng, có cảnh báo bản quyền.
+  4. Script cũ không có media vẫn render bình thường (tương thích ngược hoàn toàn).
 
 ---
 
-## 5. Bước tiếp theo cần làm ngay (Immediate Next Step: Milestone M2)
+## 5. Bước tiếp theo cần làm ngay (Immediate Next Step: Milestone M3)
 
-Nhiệm vụ tiếp theo là **Milestone M2 (Media thật: Ảnh/Video/Screenshot cho từng cảnh)** theo đúng prompt **P-M2** trong `PRD2.md` Mục B4:
+Nhiệm vụ tiếp theo là **Milestone M3 (Template review & Themes)** theo đúng prompt **P-M3** trong `PRD2.md` Mục B4:
 
 1. **Khởi tạo nhánh làm việc mới:**
    ```bash
-   git checkout -b feat/m2-media
+   git checkout -b feat/m3-review-templates
    ```
 2. **Kỹ năng bắt buộc phải đọc trước:**
-   - [`.agents/skills/media-assets/SKILL.md`](../.agents/skills/media-assets/SKILL.md)
+   - [`.agents/skills/hyperframes-templates/SKILL.md`](../.agents/skills/hyperframes-templates/SKILL.md)
    - [`.agents/skills/schema-evolution/SKILL.md`](../.agents/skills/schema-evolution/SKILL.md)
    - [`.agents/skills/qa-verify/SKILL.md`](../.agents/skills/qa-verify/SKILL.md)
-3. **Các hạng mục cần làm ở M2:**
-   - Trường `media` tùy chọn trong mỗi cảnh của schema: `type` (`image` | `video` | `screenshot`), `src`, `fit` (`cover` | `contain`), `fx` (`none` | `kenburns`), `credit`, `license`.
-   - `StockProvider` (Pexels / Pixabay) kèm `FakeStockProvider` cho kiểm thử; test bằng `nock`, không gọi API thật.
-   - Chụp màn hình URL bài báo bằng Puppeteer (sẵn có qua HyperFrames/Chromium).
-   - Tải về `output/<slug>/media/`, ghi `media.json` (nguồn, giấy phép, tác giả).
-   - Hiệu ứng Ken Burns cho ảnh tĩnh; cảnh không có media hoặc lỗi tải tự động rơi về nền mặc định, không làm hỏng video.
-   - Cờ `og:image` chỉ dùng khi bật rõ ràng kèm cảnh báo bản quyền.
+3. **Các hạng mục cần làm ở M3:**
+   - Bổ sung 6 templates mới vào discriminated union trong `src/render/script-schema.ts`:
+     - `spec-table`: Tên sản phẩm + tối đa 6 dòng thông số (nhãn/giá trị).
+     - `pros-cons`: Hai cột ưu/nhược (mỗi cột tối đa 4 ý).
+     - `verdict-score`: Điểm (0–10 hoặc 0–100), nhãn kết luận, 1 câu tóm tắt.
+     - `price-tag`: Giá, phiên bản/biến thể, ghi chú nơi bán.
+     - `image-gallery`: 1–3 ảnh sản phẩm, chú thích.
+     - `phone-mockup`: Ảnh/screenshot đặt trong khung điện thoại.
+   - Viết HTML composer, timeline GSAP animation, CSS cho cả hai theme (`styles.css` và `styles.light-pro.css`).
+   - Cập nhật skill `create-news-video` để LLM biết khi nào chọn template mới.
+   - Thêm fixture mẫu trong `tests/fixtures/`.
+   - Viết test Vitest và kiểm tra chụp frame kiểm chứng ở cả hai theme.
 4. **Quy trình nghiệm thu:**
    - Chạy `npx tsc --noEmit` và `npm test`.
-   - Render video mẫu có media và kiểm tra thông số bằng `ffprobe`.
+   - Render video mẫu và kiểm tra thông số bằng `ffprobe`.
    - Cập nhật tiếp vào `docs/handover-brief.md`.
