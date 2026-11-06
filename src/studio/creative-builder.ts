@@ -1,0 +1,237 @@
+import { fetchSourceContent } from "../script/source-fetcher.js";
+import { collectGithubVisuals, type VisualAsset } from "./visuals.js";
+import { captureUrlScreenshot } from "../media/screenshot.js";
+import { readUpload, uploadPath } from "./uploads.js";
+import { planCreativeVisuals } from "./creative-planner.js";
+import { alignCreativeAudioAndSubtitles, validateTimelineSanity } from "../captions/audio-aligner.js";
+import { generateSrt, parseSrt } from "../captions/srt.js";
+import { readCachedAsr, FasterWhisperClient, asrInstalled } from "../asr/faster-whisper-client.js";
+import { alignScriptWithRaw } from "../asr/script-align.js";
+import type { AsrResult } from "../asr/types.js";
+import { ScriptSchema, type Script } from "../render/script-schema.js";
+import type { LLMProvider } from "../script/types.js";
+import { DEFAULT_BGM } from "../channel-defaults.js";
+import { log } from "../utils/logger.js";
+import { join } from "node:path";
+import { randomUUID } from "node:crypto";
+import { UPLOAD_DIR } from "./uploads.js";
+
+export interface BuildCreativeScriptParams {
+  url: string;
+  transcript?: string;
+  audioUploadId: string;
+  srtContent?: string;
+  templatePack?: string;
+  channelName?: string;
+  llmProvider?: LLMProvider | null;
+  asrLanguage?: string;
+}
+
+export interface BuildCreativeScriptResult {
+  script: Script;
+  alignment: Awaited<ReturnType<typeof alignCreativeAudioAndSubtitles>>;
+  sourceTitle: string;
+}
+
+/**
+ * Builds a validated, self-contained Script object for Creative Mode.
+ */
+export async function buildCreativeScript(
+  params: BuildCreativeScriptParams
+): Promise<BuildCreativeScriptResult> {
+  const {
+    url,
+    transcript,
+    audioUploadId,
+    srtContent,
+    templatePack = "reference",
+    channelName = "DevPeek36",
+    llmProvider,
+    asrLanguage = process.env.ASR_LANGUAGE ?? "vi",
+  } = params;
+
+  // Resolve effective transcript: from transcript param or parsed from SRT content
+  let effectiveTranscript = transcript?.trim() || "";
+  if (!effectiveTranscript && srtContent?.trim()) {
+    try {
+      const cues = parseSrt(srtContent.trim());
+      effectiveTranscript = cues.map((c) => c.text.trim()).filter(Boolean).join(" ");
+    } catch (e: any) {
+      log.warn(`[Creative Builder] Could not parse transcript from SRT: ${e.message}`);
+    }
+  }
+
+  // 1. Read uploaded audio metadata
+  const audioInfo = await readUpload(audioUploadId);
+  const audioDurationSec = audioInfo.durationSec;
+  log.info(`[Creative Builder] Uploaded audio duration: ${audioDurationSec.toFixed(2)}s`);
+
+  // 1b. M8: audio → ASR. SRT input keeps the legacy path; otherwise ASR word timings win.
+  const hasSrt = Boolean(srtContent?.trim());
+  let asrResult: AsrResult | undefined;
+  let asrAligned: ReturnType<typeof alignScriptWithRaw> | undefined;
+  try {
+    if (!hasSrt && asrInstalled()) {
+      asrResult = await readCachedAsr(audioInfo.path, { language: asrLanguage });
+      if (!asrResult && !effectiveTranscript) {
+        // Auto-run ASR when the user did not press "Tạo SRT từ audio" first.
+        // Cache hit makes this instant; a cold run happens at most once per audio.
+        asrResult = await new FasterWhisperClient().transcribe(audioInfo.path, { language: asrLanguage });
+      }
+      if (asrResult) asrAligned = alignScriptWithRaw(effectiveTranscript || undefined, asrResult);
+    }
+  } catch (err: any) {
+    log.warn(`[Creative Builder] ASR tự động thất bại: ${err.message}`);
+    asrResult = undefined;
+    asrAligned = undefined;
+  }
+
+  // Legacy contract stays: without ASR availability nothing changed here.
+  if (!effectiveTranscript && !hasSrt && !asrAligned) {
+    throw new Error(
+      "Cần cung cấp kịch bản lời đọc (transcript) hoặc file phụ đề (SRT). " +
+      "Hoặc cài ASR cục bộ bằng `npm run asr:setup` để tự nghe audio."
+    );
+  }
+  if (!effectiveTranscript && asrAligned) {
+    effectiveTranscript = asrAligned.cues.map((c) => c.text).join(" ");
+  }
+
+  // 2. Extract context and real visual assets from URL
+  let source;
+  try {
+    source = await fetchSourceContent(url);
+  } catch (err: any) {
+    log.warn(`[Creative Builder] Could not fetch URL content: ${err.message}. Using fallback metadata.`);
+    source = {
+      title: "Công nghệ nổi bật",
+      content: effectiveTranscript,
+      url: url || "https://github.com",
+      domain: url ? new URL(url).hostname : "github.com",
+      ogImage: null,
+    };
+  }
+
+  // Collect real assets (screenshot / logo / avatar)
+  const availableAssets: VisualAsset[] = [];
+  if (url.includes("github.com")) {
+    try {
+      const gVisuals = await collectGithubVisuals(url);
+      availableAssets.push(...gVisuals.assets);
+    } catch (gErr: any) {
+      log.warn(`[Creative Builder] GitHub visual capture failed: ${gErr.message}`);
+    }
+  } else if (url.startsWith("http")) {
+    try {
+      const id = randomUUID();
+      const tmpPath = join(UPLOAD_DIR, `${id}.screenshot.jpg`);
+      const shot = await captureUrlScreenshot(url, tmpPath, { width: 1440, height: 1100 });
+      if (shot.success) {
+        availableAssets.push({
+          id,
+          label: "Screenshot bài viết",
+          kind: "screenshot",
+          source: url,
+          previewUrl: tmpPath,
+        });
+      }
+    } catch (shotErr: any) {
+      log.warn(`[Creative Builder] URL screenshot failed: ${shotErr.message}`);
+    }
+  }
+
+  // 3. Plan scenes using AI Visual Planner (with safe fallback)
+  const plannedScenes = await planCreativeVisuals({
+    transcript: effectiveTranscript,
+    url,
+    source,
+    availableAssets,
+    llmProvider,
+    channelName,
+  });
+
+  // 4. Align Audio and Subtitles
+  const sceneTexts = plannedScenes.map((s) => s.voiceText);
+  const alignment = await alignCreativeAudioAndSubtitles({
+    audioPath: audioInfo.path,
+    totalDurationSec: audioDurationSec,
+    transcript: effectiveTranscript,
+    sceneTexts,
+    srtContent,
+    asrCues: asrAligned?.cues,
+    asrMismatchWarning: asrAligned?.mismatchWarning,
+  });
+
+  // Verify timeline sanity
+  const sanity = validateTimelineSanity({
+    sceneBoundaries: alignment.sceneBoundaries,
+    totalDurationSec: audioDurationSec,
+    sceneCount: plannedScenes.length,
+    isOutroLast: true,
+  });
+  if (!sanity.valid) {
+    log.warn(`[Creative Builder] Timeline sanity warning: ${sanity.errors.join("; ")}`);
+  }
+
+  // Generate captions SRT string
+  const finalSrt = srtContent && srtContent.trim() ? srtContent.trim() : generateSrt(alignment.cues);
+
+  // 5. Assemble complete Script
+  const rawScript: any = {
+    schemaVersion: 2,
+    version: "2.0",
+    directingMode: "auto",
+    templatePack: templatePack || "reference",
+    visualStyle: "tech-editorial",
+    motionPreset: "calm",
+    soundDesign: true,
+    fitDuration: false, // Never alter tempo of uploaded ElevenLabs audio
+    explanationLevel: audioDurationSec <= 60 ? "quick" : audioDurationSec <= 90 ? "standard" : "detailed",
+    targetDurationSec: Math.max(1, Math.round(audioDurationSec)),
+    metadata: {
+      title: source.title,
+      source: {
+        url: source.url,
+        domain: source.domain || "github.com",
+        image: source.ogImage || null,
+      },
+      channel: channelName,
+      useOgImage: false,
+    },
+    voice: {
+      provider: "imported",
+      voiceId: "elevenlabs-voice",
+      speed: 1.0,
+      settingsSource: "script",
+      uploadId: audioUploadId,
+      captionsSrt: finalSrt,
+      sceneBoundaries: alignment.sceneBoundaries,
+    },
+    captions: {
+      enabled: true,
+      style: "tiktok-bold",
+      highlightMode: alignment.highlightMode,
+    },
+    bgm: {
+      ...DEFAULT_BGM,
+      enabled: true,
+      duck: true,
+    },
+    scenes: plannedScenes,
+  };
+
+  // Find logo if available
+  const logo = availableAssets.find((a) => a.kind === "repo-logo" || a.kind === "owner-avatar");
+  if (logo) {
+    rawScript.metadata.logoAssetId = logo.id;
+  }
+
+  // Validate via ScriptSchema
+  const validated = ScriptSchema.parse(rawScript);
+
+  return {
+    script: validated,
+    alignment,
+    sourceTitle: source.title,
+  };
+}

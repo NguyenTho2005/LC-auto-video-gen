@@ -55,6 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Player Modal
   const playerModal = document.getElementById("playerModal");
   const activeVideoPlayer = document.getElementById("activeVideoPlayer");
+  let activePlayerSlug = null;
   const playerModalTitle = document.getElementById("playerModalTitle");
   const playerVideoTitle = document.getElementById("playerVideoTitle");
   const playerVideoMeta = document.getElementById("playerVideoMeta");
@@ -80,6 +81,22 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
       toastNotification.classList.remove("show");
     }, 3500);
+  }
+
+  // ── Safe JSON Response Parser ────────────────────────────────────────────
+  async function parseJsonResponse(res, defaultErrorMsg = "Yêu cầu thất bại") {
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      const hint = res.status ? ` (Mã HTTP ${res.status}${res.statusText ? ' - ' + res.statusText : ''})` : "";
+      const path = res.url ? ` khi gọi ${new URL(res.url, window.location.href).pathname}` : "";
+      throw new Error(`Máy chủ không phản hồi JSON hợp lệ${hint}${path}. Hãy kiểm tra xem server backend (npm run web) có đang chạy không.`);
+    }
+    if (!res.ok) {
+      throw new Error(data?.error || `${defaultErrorMsg} (${res.status})`);
+    }
+    return data;
   }
 
   // ── Tab Switching ────────────────────────────────────────────────────────
@@ -113,6 +130,8 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    currentExtractedData=null;extractedCard.style.display="none";
+    btnSubmitUrl.disabled=true;
     btnExtractUrl.disabled = true;
     btnExtractUrl.innerHTML = `<span class="modal-spinner" style="width:14px;height:14px;border-width:2px;"></span> Đang đọc...`;
 
@@ -123,12 +142,12 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ url }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Không thể quét dữ liệu từ URL");
+      const data = await parseJsonResponse(res, "Không thể quét dữ liệu từ URL");
 
-      currentExtractedData = data;
+      currentExtractedData = {...data,url};
       extractedDomain.textContent = data.domain || "website";
       extractedTitle.textContent = data.title || url;
+      document.getElementById('extractedScope').textContent = data.sourceScope ? `Nguồn: ${data.sourceScope.replace(/[.。]+$/, "")}${data.sections?.length ? ` · ${data.sections.length} đề mục` : ""}.` : '';
       extractedSnippet.textContent = data.content ? data.content.slice(0, 160) + "..." : "Đã đọc nội dung thành công.";
 
       if (data.ogImage) {
@@ -143,6 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (err) {
       showToast(`Lỗi: ${err.message}`);
     } finally {
+      btnSubmitUrl.disabled=false;
       btnExtractUrl.disabled = false;
       btnExtractUrl.innerHTML = `<span>Quét Dữ Liệu</span>`;
     }
@@ -158,7 +178,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const selectPresetUrl = document.getElementById("selectPresetUrl");
     const selectCaptionStyleUrl = document.getElementById("selectCaptionStyleUrl");
-    const checkEnableBgmUrl = document.getElementById("checkEnableBgmUrl");
     const checkUseOgImageUrl = document.getElementById("checkUseOgImageUrl");
 
     btnSubmitUrl.disabled = true;
@@ -172,10 +191,8 @@ document.addEventListener("DOMContentLoaded", () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url }),
         });
-        if (res.ok) {
-          const data = await res.json();
-          currentExtractedData = { ...data, url };
-        }
+        const data = await parseJsonResponse(res, "Không thể đọc nội dung nguồn");
+        currentExtractedData = { ...data, url };
       }
 
       const payload = {
@@ -184,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
         content: currentExtractedData?.content || "",
         image: currentExtractedData?.ogImage || null,
         domain: currentExtractedData?.domain || "web",
-        channel: inputChannelUrl.value.trim() || "Công Nghệ 24h",
+        channel: inputChannelUrl.value.trim() || "DevPeek36",
         voiceId: selectVoiceUrl.value,
         voiceProvider: "edge-tts",
         preset: selectPresetUrl?.value || "news_45",
@@ -192,13 +209,10 @@ document.addEventListener("DOMContentLoaded", () => {
           enabled: true,
           style: selectCaptionStyleUrl?.value || "tiktok-bold",
         },
-        bgm: checkEnableBgmUrl?.checked
-          ? { src: "assets/bgm/ambient-tech.mp3", volume: 0.18, duck: true }
-          : undefined,
         useOgImage: checkUseOgImageUrl?.checked || false,
       };
 
-      await launchPipeline(payload);
+      await window.Studio.prepare(payload, launchPipeline);
     } catch (err) {
       showToast(`Lỗi: ${err.message}`);
     } finally {
@@ -226,12 +240,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const payload = {
       title,
       content,
-      channel: inputChannelText.value.trim() || "Tin Tức AI 24h",
+      channel: inputChannelText.value.trim() || "DevPeek36",
       voiceId: selectVoiceText.value,
       voiceProvider: "edge-tts",
     };
 
-    await launchPipeline(payload);
+    btnSubmitText.disabled = true;
+    try { await window.Studio.prepare(payload, launchPipeline); } catch (err) { showToast(err.message); }
+    finally { btnSubmitText.disabled = false; }
   });
 
   // ── Load Sample Script ───────────────────────────────────────────────────
@@ -241,9 +257,9 @@ document.addEventListener("DOMContentLoaded", () => {
       metadata: {
         title: "Apple ra mắt chip AI thế hệ mới",
         source: { url: "local", domain: "apple.com", image: null },
-        channel: "Công Nghệ 24h",
+        channel: "DevPeek36",
       },
-      voice: { provider: "edge-tts", voiceId: "vi-VN-NamMinhNeural", speed: 1.0 },
+      voice: { provider: "edge-tts", voiceId: "vi-VN-NamMinhNeural", speed: 1.2, settingsSource:"script", pronunciation:"smart" },
       scenes: [
         {
           id: "hook",
@@ -277,8 +293,8 @@ document.addEventListener("DOMContentLoaded", () => {
         {
           id: "outro",
           type: "outro",
-          voiceText: "Theo dõi Công Nghệ 24h để xem bản tin mới mỗi ngày.",
-          templateData: { template: "outro", ctaTop: "Xem bản tin mới mỗi ngày", channelName: "Công Nghệ 24h", source: "Nguồn: apple.com" },
+          voiceText: "Theo dõi DevPeek36 để xem bản tin mới mỗi ngày.",
+          templateData: { template: "outro", ctaTop: "Xem bản tin mới mỗi ngày", channelName: "DevPeek36", source: "Nguồn: apple.com" },
         },
       ],
     };
@@ -296,7 +312,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const parsed = JSON.parse(raw);
-      await launchPipeline({ script: parsed });
+      parsed.templatePack='reference';parsed.visualStyle='tech-editorial';parsed.motionPreset='calm';
+      parsed.creative={presetId:'reference',...parsed.creative};parsed.captions={enabled:true,style:'minimal',highlightMode:'estimated',...parsed.captions};
+      await window.Studio.reviewImported(parsed, launchPipeline);
     } catch (err) {
       showToast(`Lỗi cú pháp JSON: ${err.message}`);
     }
@@ -313,8 +331,7 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Không thể khởi động render video");
+      const data = await parseJsonResponse(res, "Không thể khởi động render video");
 
       currentActiveJob = data;
       progressJobId.textContent = data.slug;
@@ -341,7 +358,11 @@ document.addEventListener("DOMContentLoaded", () => {
         d.logs.forEach(addLogLine);
       }
       if (d.step) updateProgressStep(d.step, d.totalSteps || 8, d.stepMessage || "");
-      if (d.status === "completed") handleJobSuccess(d);
+      if (d.status === "completed") { handleJobSuccess(d); activeEventSource.close(); }
+      if (d.status === "failed") {
+        updateProgressStep(0, 8, `Render thất bại: ${d.error || 'Hãy thử lại'}`, true);
+        activeEventSource.close();
+      }
     });
 
     activeEventSource.addEventListener("progress", (e) => {
@@ -481,7 +502,7 @@ document.addEventListener("DOMContentLoaded", () => {
       card.innerHTML = `
         <div class="video-thumb-container" data-slug="${vid.slug}">
           ${hasMp4 ? `
-            <video class="video-preview-player" src="${vid.videoUrl}#t=0.5" preload="metadata" muted playsinline></video>
+            <img class="video-preview-player" src="${escapeHtml(vid.thumbnailUrl || `/api/videos/${encodeURIComponent(vid.slug)}/thumbnail`)}" alt="Thumbnail ${escapeHtml(vid.title)}" loading="lazy" decoding="async" width="1080" height="1920">
             <div class="video-play-overlay">
               <div class="play-icon-circle">▶</div>
             </div>
@@ -549,6 +570,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ── Video Player Modal ───────────────────────────────────────────────────
   function openPlayerModal(vid) {
+    activePlayerSlug = vid.slug;
     playerModalTitle.textContent = vid.title || "Xem Video";
     playerVideoTitle.textContent = vid.title || "Video thành phẩm";
     playerVideoMeta.textContent = `${vid.videoSizeMb ? `${vid.videoSizeMb} MB · ` : ""}Độ phân giải dọc 1080x1920 (9:16)`;
@@ -557,6 +579,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const downloadUrl = `/api/videos/${vid.slug}/download`;
     const mp3Url = vid.audioUrl || `/api/videos/${vid.slug}/file/voice.mp3`;
 
+    activeVideoPlayer.poster = vid.thumbnailUrl || `/api/videos/${encodeURIComponent(vid.slug)}/thumbnail`;
     activeVideoPlayer.src = mp4Url;
     activeVideoPlayer.play().catch(() => {});
 
@@ -565,8 +588,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     btnDownloadMp3.href = mp3Url;
     btnDownloadMp3.setAttribute("download", `${vid.slug}-voice.mp3`);
+    if(btnDownloadCover){
+      btnDownloadCover.href=`/api/videos/${encodeURIComponent(vid.slug)}/thumbnail?download=1`;
+      btnDownloadCover.download=`${vid.slug}-cover.png`;
+      btnDownloadCover.style.display='inline-flex';
+    }
 
-    playerCaptionBox.textContent = vid.caption || `${vid.title}\n\n#congnghe #thuthuat #cuongit #xuhuong`;
+    playerCaptionBox.textContent = vid.caption || `${vid.title}\n\n#Ai #Github #xuhuong #DevPeek36`;
 
     btnCopyCaption.onclick = () => {
       navigator.clipboard.writeText(playerCaptionBox.textContent).then(() => {
@@ -584,6 +612,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function closePlayerModal() {
+    activePlayerSlug = null;
     activeVideoPlayer.pause();
     activeVideoPlayer.src = "";
     playerModal.style.display = "none";
@@ -719,11 +748,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (lexiconSection) lexiconSection.style.display = mode === "lexicon" ? "flex" : "none";
     if (librarySection) librarySection.style.display = mode === "library" ? "block" : "none";
 
+    window.dispatchEvent(new CustomEvent("app:mode",{detail:mode}));
     if (mode === "studio") {
       btnModeStudio?.classList.add("active");
     } else if (mode === "feeds") {
       btnModeFeeds?.classList.add("active");
-      loadFeedsData();
     } else if (mode === "timeline") {
       btnModeTimeline?.classList.add("active");
       loadProjectsList();
@@ -1019,6 +1048,8 @@ document.addEventListener("DOMContentLoaded", () => {
         inspectorSceneTitle.textContent = `Chi Tiết Cảnh: ${scene.id}`;
         inspectorSceneType.textContent = scene.type;
         inspectorVoiceText.value = scene.voiceText;
+        const timingHost=document.getElementById('inspectorBlockTiming');
+        if(timingHost){const panel=document.createElement('div');timingHost.replaceChildren(panel);window.Studio?.blockTimingEditor(panel,Object.assign(scene,{githubStarLeadIn:scene.type==='hook'&&Boolean(currentProject.script.metadata.githubStars)})).catch(err=>{panel.textContent=err.message;});}
         inspectorTemplate.value = scene.templateData.template;
         inspectorDuration.value = foundClip.duration.toFixed(1);
         metaSceneId.textContent = scene.id;
@@ -1167,6 +1198,15 @@ document.addEventListener("DOMContentLoaded", () => {
       } catch {}
     }
   }
+
+  document.getElementById('btnReferenceDesign')?.addEventListener('click',()=>{
+    if(!currentProject)return;
+    currentProject.script.templatePack='reference';currentProject.script.visualStyle='tech-editorial';currentProject.script.motionPreset='calm';
+    currentProject.script.creative={presetId:'reference',hookType:'problem-solution',structureId:'explainer'};
+    currentProject.script.captions={enabled:true,style:'minimal',highlightMode:'estimated'};
+    currentProject.timelineState.script=currentProject.script;
+    showToast('Đã áp dụng thiết kế video mẫu cho mọi cảnh. Lưu kịch bản rồi Render để tạo bản mới.');
+  });
 
   // Inspector Field Changes
   inspectorVoiceText.addEventListener("input", () => {
@@ -1516,19 +1556,13 @@ document.addEventListener("DOMContentLoaded", () => {
   btnViewPublishChecklist?.addEventListener("click", async () => {
     if (!activeVideoPlayer.src) return;
     // Lấy slug từ player title hoặc active project
-    const currentSlug = currentProject ? currentProject.slug : (selectTimelineProject?.value || "");
+    const currentSlug = activePlayerSlug;
     if (!currentSlug) return;
 
     try {
       const res = await fetch(`/api/projects/${currentSlug}/publish`);
       const data = await res.json();
       publishMarkdownContent.textContent = data.publishContent || "Chưa có checklist đăng bài.";
-
-      if (data.hasCover && btnDownloadCover) {
-        btnDownloadCover.href = data.coverUrl;
-        btnDownloadCover.download = `${currentSlug}-cover.png`;
-        btnDownloadCover.style.display = "inline-flex";
-      }
 
       publishModal.style.display = "flex";
     } catch (err) {
@@ -1549,6 +1583,16 @@ document.addEventListener("DOMContentLoaded", () => {
       showToast("Đã sao chép toàn bộ checklist đăng bài vào clipboard!");
     });
   });
+
+  window.addEventListener('radar:import',event=>{
+    const link=event.detail?.link;
+    if(typeof link!=='string'||!/^https?:\/\//i.test(link))return;
+    if(btnSubmitUrl.disabled||btnExtractUrl.disabled){showToast('Studio đang xử lý. Vui lòng chờ xong trước khi nhập bài khác.');return;}
+    switchMode('studio');document.getElementById('tabUrl').click();
+    inputArticleUrl.value=link;currentExtractedData=null;extractedCard.style.display='none';
+    inputArticleUrl.scrollIntoView({behavior:'smooth',block:'center'});inputArticleUrl.focus();btnExtractUrl.click();
+  });
+  document.getElementById('legacyFeeds')?.addEventListener('toggle',event=>{if(event.target.open&&!cachedFeedItems.length)loadFeedsData();});
 
   // ── Feeds RSS Logic (Milestone M7) ───────────────────────────────────────
   async function loadFeedsData() {
@@ -1603,7 +1647,7 @@ document.addEventListener("DOMContentLoaded", () => {
             content: item.description || item.title,
             url: item.link,
             domain: item.domain || "news",
-            channel: "Tin Tức AI 24h",
+            channel: "DevPeek36",
           });
         });
 
@@ -1817,9 +1861,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const MODEL_PRESETS = {
     gemini: [
-      { id: "gemini-2.0-flash", label: "gemini-2.0-flash (Mặc định · Cực nhanh & Chuẩn)", isDefault: true },
-      { id: "gemini-1.5-flash", label: "gemini-1.5-flash (Ổn định)" },
-      { id: "gemini-1.5-pro", label: "gemini-1.5-pro (Mô hình lớn chuyên sâu)" },
+      { id: "gemini-flash-lite-latest", label: "gemini-flash-lite-latest (Khuyên dùng · Siêu tốc 1s)", isDefault: true },
+      { id: "gemini-3.5-flash-lite", label: "gemini-3.5-flash-lite (Rất nhanh)" },
+      { id: "gemini-3.8-flash", label: "gemini-3.8-flash (Model mới · Tư duy cao)" },
     ],
     openai: [
       { id: "gpt-4o-mini", label: "gpt-4o-mini (Nhanh & Tiết kiệm)", isDefault: true },
@@ -2106,6 +2150,314 @@ document.addEventListener("DOMContentLoaded", () => {
   // Inline triggers on form banners
   document.querySelectorAll(".btn-trigger-llm-settings").forEach((btn) => {
     btn.addEventListener("click", openLlmModal);
+  });
+
+  // ── Creative Mode (100% Automated) ──────────────────────────────────────
+  const creativeUrl = document.getElementById("creativeUrl");
+  const creativeTranscript = document.getElementById("creativeTranscript");
+  const creativeAudioFile = document.getElementById("creativeAudioFile");
+  const creativeSrtFile = document.getElementById("creativeSrtFile");
+  const creativeAudioStatus = document.getElementById("creativeAudioStatus");
+  const creativeAudioPlayer = document.getElementById("creativeAudioPlayer");
+  const creativeSrtStatus = document.getElementById("creativeSrtStatus");
+  const creativeStylePack = document.getElementById("creativeStylePack");
+  const creativeChannel = document.getElementById("creativeChannel");
+  const btnSubmitCreative = document.getElementById("btnSubmitCreative");
+  const creativeStatusAlert = document.getElementById("creativeStatusAlert");
+  const btnGenerateSrt = document.getElementById("btnGenerateSrt");
+  const creativeGeneratedSrt = document.getElementById("creativeGeneratedSrt");
+  const creativeAsrStatus = document.getElementById("creativeAsrStatus");
+
+  let uploadedAudioData = null;
+
+  creativeAudioFile?.addEventListener("change", async () => {
+    uploadedAudioData = null;
+    if (creativeAudioPlayer) {
+      creativeAudioPlayer.pause();
+      creativeAudioPlayer.removeAttribute("src");
+      creativeAudioPlayer.hidden = true;
+    }
+
+    if (!creativeAudioFile.files.length) {
+      creativeAudioStatus.textContent = "Chưa chọn file (tối đa 30 MB).";
+      creativeAudioStatus.style.color = "";
+      return;
+    }
+
+    const file = creativeAudioFile.files[0];
+    if (!/\.(mp3|wav)$/i.test(file.name)) {
+      showToast("Chỉ nhận file âm thanh .mp3 hoặc .wav");
+      creativeAudioStatus.textContent = "❌ Định dạng không hỗ trợ. Hãy chọn file .mp3 hoặc .wav";
+      creativeAudioStatus.style.color = "#ff4d4f";
+      return;
+    }
+
+    if (file.size > 30 * 1024 * 1024) {
+      showToast("File vượt quá 30 MB");
+      creativeAudioStatus.textContent = "❌ File vượt quá 30 MB.";
+      creativeAudioStatus.style.color = "#ff4d4f";
+      return;
+    }
+
+    creativeAudioStatus.textContent = `⏳ Đang tải và kiểm tra audio: ${file.name}...`;
+    creativeAudioStatus.style.color = "var(--accent-cyan, #00f2fe)";
+
+    try {
+      const res = await fetch(`/api/studio/uploads?name=${encodeURIComponent(file.name)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "x-filename": file.name,
+        },
+        body: file,
+      });
+      const data = await parseJsonResponse(res, "Không thể tải lên file âm thanh");
+
+      uploadedAudioData = data;
+      creativeAudioStatus.textContent = `✅ Đã nhận: ${data.name} · ${data.durationSec.toFixed(1)} giây`;
+      creativeAudioStatus.style.color = "#52c41a";
+
+      if (creativeAudioPlayer && data.audioUrl) {
+        creativeAudioPlayer.src = data.audioUrl;
+        creativeAudioPlayer.hidden = false;
+      }
+      showToast(`Đã nhận file âm thanh (${data.durationSec.toFixed(1)}s)`);
+    } catch (err) {
+      creativeAudioStatus.textContent = `❌ Lỗi: ${err.message}`;
+      creativeAudioStatus.style.color = "#ff4d4f";
+      showToast(`Lỗi nhận audio: ${err.message}`);
+    }
+  });
+
+  creativeSrtFile?.addEventListener("change", async () => {
+    if (creativeSrtFile.files.length) {
+      const file = creativeSrtFile.files[0];
+      creativeSrtStatus.textContent = `✅ Đã chọn phụ đề: ${file.name}`;
+      creativeSrtStatus.style.color = "#52c41a";
+
+      try {
+        const text = await file.text();
+        const extracted = text
+          .replace(/^\uFEFF/, "")
+          .replace(/\r\n/g, "\n")
+          .replace(/\r/g, "\n")
+          .split(/\n\n+/)
+          .map((block) => {
+            const parts = block.trim().split("\n");
+            if (parts.length >= 2) {
+              const startIdx = /^\d+$/.test(parts[0].trim()) ? 2 : 1;
+              return parts.slice(startIdx).join(" ").trim();
+            }
+            return "";
+          })
+          .filter(Boolean)
+          .join(" ");
+
+        if (!creativeTranscript.value.trim() && extracted) {
+          creativeTranscript.value = extracted;
+          showToast("Đã tự động trích xuất lời đọc từ file SRT!");
+        }
+      } catch (err) {
+        console.warn("Could not read SRT file text:", err);
+      }
+    } else {
+      creativeSrtStatus.textContent = "Nếu có SRT, phụ đề sẽ hiển thị theo cue chính xác. Nếu không, hệ thống tự động căn chỉnh theo khoảng ngắt âm thanh thực tế.";
+      creativeSrtStatus.style.color = "";
+    }
+  });
+
+  // ── M8: Tạo SRT từ audio bằng ASR cục bộ ───────────────────────────────────
+  btnGenerateSrt?.addEventListener("click", async () => {
+    try {
+      // Đảm bảo audio đã upload (tận dụng upload từ click trước đó nếu có).
+      let audioUploadId = uploadedAudioData?.uploadId;
+      if (!audioUploadId) {
+        if (!creativeAudioFile?.files.length) {
+          showToast("Hãy chọn file MP3/WAV trước khi tạo SRT!");
+          creativeAudioFile?.focus();
+          return;
+        }
+        btnGenerateSrt.disabled = true;
+        creativeAsrStatus.textContent = "⏳ Đang tải audio lên hệ thống...";
+        creativeAsrStatus.style.color = "var(--accent-cyan, #00f2fe)";
+        const uploadRes = await fetch(`/api/studio/uploads?name=${encodeURIComponent(creativeAudioFile.files[0].name)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/octet-stream", "x-filename": creativeAudioFile.files[0].name },
+          body: creativeAudioFile.files[0],
+        });
+        const uploadData = await parseJsonResponse(uploadRes, "Không thể tải lên file âm thanh");
+        audioUploadId = uploadData.uploadId;
+        uploadedAudioData = uploadData;
+      }
+
+      btnGenerateSrt.disabled = true;
+      const durSec = uploadedAudioData?.durationSec;
+      creativeAsrStatus.textContent = "⏳ Đang nhận dạng giọng nói cục bộ (PhoWhisper). Lần đầu có thể tải model ~0.97 GB; sau đó khoảng "
+        + (durSec ? `${Math.max(10, Math.round(durSec / 6))}–${Math.max(20, Math.round(durSec / 2))}s` : "vài phút") + "...";
+      creativeAsrStatus.style.color = "var(--accent-cyan, #00f2fe)";
+
+      const res = await fetch("/api/studio/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploadId: audioUploadId }),
+      });
+      const data = await parseJsonResponse(res, "Lỗi nhận dạng giọng nói");
+
+      creativeGeneratedSrt.value = data.srt;
+      creativeGeneratedSrt.hidden = false;
+      const acc = data.quality?.wordAccuracy === "high" ? "cao (timing từng từ)" : "thấp";
+      creativeAsrStatus.textContent =
+        `✅ Đã tạo SRT (${data.cues.length} cue, ${data.words.length} từ). ` +
+        `Chất lượng timing: ${acc}. Sửa chữ trực tiếp trong khung này trước khi dựng video.`;
+      creativeAsrStatus.style.color = "#52c41a";
+      if (data.quality?.mismatchWarning) showToast(data.quality.mismatchWarning);
+      showToast("Đã tạo SRT từ audio!");
+    } catch (err) {
+      creativeAsrStatus.textContent = `❌ Lỗi: ${err.message}`;
+      creativeAsrStatus.style.color = "#ff4d4f";
+      showToast(`Lỗi tạo SRT: ${err.message}`);
+    } finally {
+      btnGenerateSrt.disabled = false;
+    }
+  });
+
+  btnSubmitCreative?.addEventListener("click", async () => {
+    let transcript = creativeTranscript.value.trim();
+
+    // Read SRT if provided
+    let srtContent = undefined;
+    if (creativeSrtFile.files.length) {
+      try {
+        srtContent = await creativeSrtFile.files[0].text();
+      } catch (err) {
+        console.warn("Error reading SRT file:", err);
+      }
+    }
+
+    // If transcript is empty, extract text directly from SRT
+    if (transcript === "" && srtContent) {
+      transcript = srtContent
+        .replace(/^\uFEFF/, "")
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .split(/\n\n+/)
+        .map((block) => {
+          const parts = block.trim().split("\n");
+          if (parts.length >= 2) {
+            const startIdx = /^\d+$/.test(parts[0].trim()) ? 2 : 1;
+            return parts.slice(startIdx).join(" ").trim();
+          }
+          return "";
+        })
+        .filter(Boolean)
+        .join(" ");
+
+      if (transcript && !creativeTranscript.value.trim()) {
+        creativeTranscript.value = transcript;
+      }
+    }
+
+    // M8: SRT tự sinh bằng ASR — gửi TEXT đã sửa làm transcript; server tự căn
+    // lại timing từ word-boundary ASR (dùng kịch bản, thời gian của ASR).
+    if (!srtContent && creativeGeneratedSrt && creativeGeneratedSrt.value.trim()) {
+      const generatedText = creativeGeneratedSrt.value
+        .replace(/^\uFEFF/, "")
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .split(/\n\n+/)
+        .map((block) => {
+          const parts = block.trim().split("\n");
+          if (parts.length >= 2) {
+            const startIdx = /^\d+$/.test(parts[0].trim()) ? 2 : 1;
+            return parts.slice(startIdx).join(" ").trim();
+          }
+          return "";
+        })
+        .filter(Boolean)
+        .join(" ");
+      if (!transcript && generatedText) transcript = generatedText;
+      srtContent = undefined; // giữ nguyên luồng ASR (asr-words), không xuống bán như imported-srt
+    }
+
+    // Nếu chưa có gì hết: vẫn cho đi tiếp với audio — server tự chạy ASR.
+    if (!transcript || (!uploadedAudioData && !creativeAudioFile.files.length)) {
+      if (!uploadedAudioData && !creativeAudioFile.files.length) {
+        showToast("Vui lòng chọn file âm thanh MP3/WAV!");
+        creativeAudioFile.focus();
+        return;
+      }
+      if (!transcript) {
+        const okAuto = confirm("Chưa có kịch bản & SRT. Hệ thống sẽ tự nghe audio (ASR cục bộ) rồi dựng video. Tiếp tục?");
+        if (!okAuto) {
+          creativeTranscript.focus();
+          return;
+        }
+      }
+    }
+
+    if (!uploadedAudioData && !creativeAudioFile.files.length) {
+      showToast("Vui lòng chọn file âm thanh MP3/WAV!");
+      creativeAudioFile.focus();
+      return;
+    }
+
+    const origBtnHtml = btnSubmitCreative.innerHTML;
+    btnSubmitCreative.disabled = true;
+    btnSubmitCreative.innerHTML = `<span>⏳</span><span>Đang chuẩn bị dữ liệu kịch bản & audio...</span>`;
+
+    try {
+      // 1. Ensure audio is uploaded
+      let audioUploadId = uploadedAudioData?.uploadId;
+      if (!audioUploadId) {
+        const audioFile = creativeAudioFile.files[0];
+        btnSubmitCreative.innerHTML = `<span>⏳</span><span>Đang tải audio lên hệ thống...</span>`;
+        const uploadRes = await fetch(`/api/studio/uploads?name=${encodeURIComponent(audioFile.name)}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "x-filename": audioFile.name,
+          },
+          body: audioFile,
+        });
+
+        const uploadData = await parseJsonResponse(uploadRes, "Không thể tải lên file âm thanh");
+        audioUploadId = uploadData.uploadId;
+        uploadedAudioData = uploadData;
+      }
+
+      // 2. Call AI Visual Planner & Builder
+      btnSubmitCreative.innerHTML = `<span>🧠</span><span>AI Visual Planner đang chọn bố cục...</span>`;
+      const buildRes = await fetch("/api/studio/creative-build", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: creativeUrl?.value.trim() || "",
+          transcript,
+          audioUploadId,
+          srtContent,
+          allowAsr: true, // UI tự hỏi người dùng trước khi nghe audio; server không cần chặn lại
+          templatePack: creativeStylePack?.value || "reference",
+          channelName: creativeChannel?.value.trim() || "DevPeek36",
+        }),
+      });
+
+      const buildData = await parseJsonResponse(buildRes, "Lỗi tạo bản dựng Creative");
+
+      if (buildData.alignment?.timingQuality?.mismatchWarning) {
+        showToast(buildData.alignment.timingQuality.mismatchWarning);
+      }
+
+      // 4. Launch Render Pipeline (Automated 1-click)
+      btnSubmitCreative.innerHTML = `<span>🚀</span><span>Khởi động tiến trình render MP4...</span>`;
+      await launchPipeline({ script: buildData.script });
+      showToast("Bản dựng Creative Mode đã khởi chạy thành công!");
+    } catch (err) {
+      console.error(err);
+      showToast(`Lỗi: ${err.message}`);
+    } finally {
+      btnSubmitCreative.disabled = false;
+      btnSubmitCreative.innerHTML = origBtnHtml;
+    }
   });
 
   // Initial Fetch
